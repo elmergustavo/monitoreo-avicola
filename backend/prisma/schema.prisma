@@ -1,0 +1,79 @@
+// Prisma schema for the poultry house monitoring system.
+// All timestamps are stored in UTC (timestamptz).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EventType {
+  irrigation_on
+  irrigation_off
+  heat_alert_no_irrigation
+  prolonged_irrigation_alert
+  sensor_error
+
+  @@map("event_type")
+}
+
+model Device {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  name       String   @db.VarChar(100)
+  shed       String   @db.VarChar(100)
+  apiKeyHash String   @unique @map("api_key_hash") @db.Char(64)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  settings DeviceSettings?
+  readings Reading[]
+  events   Event[]
+
+  @@map("devices")
+}
+
+model Reading {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  deviceId    String   @map("device_id") @db.Uuid
+  temperature Decimal  @db.Decimal(5, 2)
+  humidity    Decimal? @db.Decimal(5, 2)
+  irrigation  Boolean
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, createdAt])
+  @@map("readings")
+}
+
+model Event {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  deviceId    String    @map("device_id") @db.Uuid
+  type        EventType
+  temperature Decimal?  @db.Decimal(5, 2)
+  durationMin Decimal?  @map("duration_min") @db.Decimal(8, 2)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, createdAt])
+  @@map("events")
+}
+
+model DeviceSettings {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  deviceId  String   @unique @map("device_id") @db.Uuid
+  tempMin   Decimal  @default(27) @map("temp_min") @db.Decimal(5, 2)
+  tempMax   Decimal  @default(30) @map("temp_max") @db.Decimal(5, 2)
+  tempAlert Decimal  @default(32) @map("temp_alert") @db.Decimal(5, 2)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("device_settings")
+}

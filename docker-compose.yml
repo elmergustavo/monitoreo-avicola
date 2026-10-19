@@ -1,0 +1,54 @@
+name: monitoreo-avicola
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-avicola}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-avicola_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-monitoreo_avicola}
+      TZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    # PostgreSQL 18+ images store data in /var/lib/postgresql/<major>/docker,
+    # so the volume is mounted on /var/lib/postgresql.
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Only started with: docker compose --profile full up --build
+  api:
+    profiles: ["full"]
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-avicola}:${POSTGRES_PASSWORD:-avicola_dev}@postgres:5432/${POSTGRES_DB:-monitoreo_avicola}?schema=public
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
