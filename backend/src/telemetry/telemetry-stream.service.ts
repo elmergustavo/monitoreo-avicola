@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Observable, Subject } from 'rxjs';
+import { Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { Observable, ReplaySubject, Subject } from 'rxjs';
 
 export interface ReadingMessage {
   type: 'reading';
@@ -55,8 +55,19 @@ export type TelemetryMessage = ReadingMessage | EventMessage | AlertMessage | No
  * with several replicas this would move to Postgres LISTEN/NOTIFY or Redis.
  */
 @Injectable()
-export class TelemetryStreamService {
+export class TelemetryStreamService implements OnModuleDestroy {
   private readonly subject = new Subject<TelemetryMessage>();
+  // Replays to late subscribers: a dashboard that reconnects while the
+  // server is shutting down is closed right away too.
+  private readonly closing = new ReplaySubject<void>(1);
+
+  /** Emits once when the application starts shutting down. */
+  readonly closing$ = this.closing.asObservable();
+
+  onModuleDestroy() {
+    this.closing.next();
+    this.closing.complete();
+  }
 
   publish(message: TelemetryMessage): void {
     this.subject.next(message);

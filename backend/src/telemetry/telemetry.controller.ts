@@ -1,7 +1,7 @@
 import { Controller, Get, MessageEvent, Param, ParseUUIDPipe, Query, Sse } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { filter, interval, map, merge, type Observable } from 'rxjs';
+import { filter, interval, map, merge, takeUntil, type Observable } from 'rxjs';
 import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { EventsQueryDto, ReadingsQueryDto } from './dto/telemetry.dto.js';
@@ -60,6 +60,7 @@ export class TelemetryController {
     const heartbeat = interval(HEARTBEAT_MS).pipe(
       map((): MessageEvent => ({ type: 'ping', data: {} })),
     );
-    return merge(messages, heartbeat);
+    // Ends open streams on shutdown, so the HTTP server can close.
+    return merge(messages, heartbeat).pipe(takeUntil(this.stream.closing$));
   }
 }
