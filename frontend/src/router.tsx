@@ -9,6 +9,7 @@ import { DevicesPage } from '@/features/devices/devices-page';
 import { HomePage } from '@/features/monitoring/home-page';
 import { ShedPage } from '@/features/monitoring/shed-page';
 import { ProfilePage } from '@/features/profile/profile-page';
+import { ReportsPage } from '@/features/reports/reports-page';
 import { RolesPage } from '@/features/roles/roles-page';
 import { UsersPage } from '@/features/users/users-page';
 
@@ -25,6 +26,10 @@ export const router = createBrowserRouter([
           {
             element: <RequirePermission permission="telemetry.read" />,
             children: [{ path: '/galpones/:id', element: <ShedPage /> }],
+          },
+          {
+            element: <RequirePermission permission="reports.export" />,
+            children: [{ path: '/reportes', element: <ReportsPage /> }],
           },
           {
             path: '/administracion',

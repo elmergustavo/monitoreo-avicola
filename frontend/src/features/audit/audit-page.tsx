@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import {
   Cpu,
+  FileDown,
   KeyRound,
   LogIn,
   LogOut,
@@ -29,6 +30,7 @@ const FILTERS = [
   { value: 'user.', label: 'Usuarios' },
   { value: 'role.', label: 'Roles' },
   { value: 'device.', label: 'Galpones' },
+  { value: 'report.', label: 'Reportes' },
 ] as const;
 
 const meta = (entry: AuditEntry, key: string): string | undefined => {
@@ -66,6 +68,13 @@ function describe(entry: AuditEntry): { icon: LucideIcon; text: string; alert?: 
       return { icon: KeyRound, text: 'Generó una nueva API key de un galpón', alert: true };
     case 'device.settings_updated':
       return { icon: SlidersHorizontal, text: 'Cambió los umbrales de temperatura' };
+    case 'report.exported': {
+      const format = meta(entry, 'format') === 'xlsx' ? 'Excel' : 'PDF';
+      const from = meta(entry, 'from');
+      const to = meta(entry, 'to');
+      const period = from && to ? (from === to ? ` del ${from}` : ` del ${from} al ${to}`) : '';
+      return { icon: FileDown, text: `Descargó un reporte en ${format}${period}` };
+    }
     default:
       return { icon: ShieldCheck, text: entry.action };
   }

@@ -1,4 +1,4 @@
-import { ClipboardList, Cpu, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { BrandMark } from '@/components/brand-mark';
@@ -97,21 +97,26 @@ function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {can('telemetry.read') && (
+        {(can('telemetry.read') || can('reports.export')) && (
           <SidebarGroup>
             <SidebarGroupLabel>Monitoreo</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <NavMenuItem item={{ to: '/', label: 'Resumen', icon: Gauge, end: true }} />
-                {devices.data
-                  ?.filter((d) => d.active)
-                  .map((device) => (
-                    <NavMenuItem
-                      key={device.id}
-                      item={{ to: `/galpones/${device.id}`, label: device.name, icon: Warehouse }}
-                      online={device.online}
-                    />
-                  ))}
+                {can('telemetry.read') && (
+                  <>
+                    <NavMenuItem item={{ to: '/', label: 'Resumen', icon: Gauge, end: true }} />
+                    {devices.data
+                      ?.filter((d) => d.active)
+                      .map((device) => (
+                        <NavMenuItem
+                          key={device.id}
+                          item={{ to: `/galpones/${device.id}`, label: device.name, icon: Warehouse }}
+                          online={device.online}
+                        />
+                      ))}
+                  </>
+                )}
+                {can('reports.export') && <NavMenuItem item={{ to: '/reportes', label: 'Reportes', icon: FileText }} />}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

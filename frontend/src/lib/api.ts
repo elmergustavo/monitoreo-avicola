@@ -69,18 +69,20 @@ interface RequestOptions {
   skipAuthRetry?: boolean;
 }
 
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** Sends a request with the access token; on a 401 it refreshes the session once and retries. */
+async function send(path: string, options: RequestOptions, accept?: string): Promise<Response> {
   const url = new URL(`${API_URL}${path}`);
   for (const [key, value] of Object.entries(options.query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
 
-  const send = () =>
+  const attempt = () =>
     fetch(url, {
       method: options.method ?? 'GET',
       credentials: 'include',
       headers: {
         ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(accept ? { Accept: accept } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -88,22 +90,55 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
   let response: Response;
   try {
-    response = await send();
+    response = await attempt();
   } catch {
     throw new ApiError(0, 'No se pudo conectar con el servidor. Revisa tu conexión.');
   }
 
   if (response.status === 401 && !options.skipAuthRetry) {
     if (await refreshAccessToken()) {
-      response = await send();
+      response = await attempt();
     } else {
       onSessionExpired?.();
     }
   }
 
   if (!response.ok) throw await toApiError(response);
+  return response;
+}
+
+export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await send(path, options);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+export interface DownloadedFile {
+  blob: Blob;
+  fileName: string;
+  /** Value of the X-Report-Code header, when present. */
+  code: string | null;
+}
+
+/** Fetches a file (e.g. a report) with the user's session. */
+export async function apiDownload(path: string, query: RequestOptions['query'], fallbackName: string): Promise<DownloadedFile> {
+  const response = await send(path, { query });
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const fileName = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? fallbackName;
+  return { blob: await response.blob(), fileName, code: response.headers.get('X-Report-Code') };
+}
+
+/** Hands a downloaded file to the browser's save flow. */
+export function saveFile({ blob, fileName }: DownloadedFile) {
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // Give the browser time to start the download before releasing the file.
+  setTimeout(() => URL.revokeObjectURL(href), 60_000);
 }
 
 async function toApiError(response: Response): Promise<ApiError> {

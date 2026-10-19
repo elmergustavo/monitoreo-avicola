@@ -2,6 +2,7 @@
 
 export type Permission =
   | 'telemetry.read'
+  | 'reports.export'
   | 'settings.manage'
   | 'devices.manage'
   | 'users.read'
@@ -112,4 +113,18 @@ export interface AuditEntry {
   ip: string | null;
   createdAt: string;
   user: { id: string; name: string; email: string } | null;
+}
+
+export type ReportFormat = 'pdf' | 'xlsx';
+
+export interface RecentReport {
+  id: string;
+  createdAt: string;
+  code: string | null;
+  format: ReportFormat | null;
+  /** YYYY-MM-DD, inclusive */
+  from: string | null;
+  to: string | null;
+  deviceId: string | null;
+  deviceName: string | null;
 }
