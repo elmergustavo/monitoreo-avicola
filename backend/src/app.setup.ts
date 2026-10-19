@@ -25,6 +25,8 @@ export function configureApp(app: INestApplication): void {
   app.enableCors({
     origin: parseCorsOrigins(config.get('CORS_ORIGINS', { infer: true })),
     credentials: true,
+    // Lets the dashboard read the file name and report code of downloads.
+    exposedHeaders: ['Content-Disposition', 'X-Report-Code'],
   });
   app.useGlobalPipes(
     new ValidationPipe({

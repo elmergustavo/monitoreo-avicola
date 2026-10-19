@@ -26,7 +26,7 @@
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
     "seed:prod": "node dist/database/seed.js",
-    "cli": "tsx src/cli.ts",
+    "cli": "tsc -p tsconfig.build.json --outDir .cli-build && node .cli-build/cli.js",
     "cli:prod": "node dist/cli.js"
   },
   "dependencies": {
@@ -44,7 +44,9 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.8",
+    "exceljs": "^4.4.0",
     "helmet": "^8.3.0",
+    "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
     "prisma": "^7.10.1",
     "reflect-metadata": "^0.2.2",
@@ -57,6 +59,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
+    "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
@@ -67,5 +70,10 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
   }
 }

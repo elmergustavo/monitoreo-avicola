@@ -12,6 +12,7 @@ import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReadingsModule } from './readings/readings.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 import { RolesModule } from './roles/roles.module.js';
 import { TelemetryModule } from './telemetry/telemetry.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -45,6 +46,7 @@ import { UsersModule } from './users/users.module.js';
     RolesModule,
     DevicesModule,
     TelemetryModule,
+    ReportsModule,
     HealthModule,
     ReadingsModule,
     EventsModule,

@@ -111,17 +111,19 @@ El dashboard usa inicio de sesión con correo y contraseña. No hay registro pú
 | Rol | Permisos |
 | --- | --- |
 | Administrador | Todos (no se puede editar) |
-| Encargado | `telemetry.read`, `settings.manage` |
+| Encargado | `telemetry.read`, `reports.export`, `settings.manage` |
 | Observador | `telemetry.read` |
 
-Permisos disponibles: `telemetry.read` (ver galpones y datos), `settings.manage` (umbrales), `devices.manage` (registrar galpones y API keys), `users.read`, `users.manage`, `roles.manage`, `audit.read` (bitácora). El administrador puede crear roles propios combinándolos.
+Permisos disponibles: `telemetry.read` (ver galpones y datos), `reports.export` (descargar reportes), `settings.manage` (umbrales), `devices.manage` (registrar galpones y API keys), `users.read`, `users.manage`, `roles.manage`, `audit.read` (bitácora). El administrador puede crear roles propios combinándolos.
+
+> Los permisos nuevos se agregan solos al Administrador al correr el seed. En una base que ya tenía roles, actívalos para los demás roles desde **Roles y permisos**.
 
 ### Comandos de administración
 
 Desde `backend/` (local) o desde la terminal del contenedor en Dokploy (`cd /app`):
 
 ```bash
-npm run cli -- create-user --email ana@granja.com --name "Ana" --role viewer   # local
+npm run cli -- create-user --email ana@granja.com --name "Ana" --role viewer   # local (compila a .cli-build/)
 npm run cli:prod -- create-user --email ana@granja.com --name "Ana" --role viewer  # contenedor
 npm run cli:prod -- reset-password --email ana@granja.com
 npm run cli:prod -- list-devices
@@ -143,9 +145,19 @@ npm run cli:prod -- rotate-device-key --device <id>                      # la ke
 | `GET /api/users` · `GET /api/roles` | `users.read` |
 | `POST /api/users` · `PATCH /api/users/:id` · `POST /api/users/:id/reset-password` | `users.manage` |
 | `POST/PATCH/DELETE /api/roles` · `GET /api/roles/permissions` | `roles.manage` |
+| `GET /api/reports/operations?format=pdf\|xlsx&from&to&deviceId` · `GET /api/reports/recent` | `reports.export` |
 | `GET /api/audit-logs` | `audit.read` |
 
 La documentación interactiva completa está en `/api/docs`.
+
+### Reportes
+
+Sección **Reportes** del dashboard (permiso `reports.export`): se elige galpón (o todos), periodo (hoy, ayer, 7 o 30 días, este mes, mes anterior o personalizado, hasta 92 días) y formato. Los archivos se generan en el servidor, en hora de Guatemala.
+
+- **PDF** (pdfkit): membrete, código de reporte, indicadores (promedio, mínima y máxima con fecha, tiempo en rango óptimo, riego, alertas, cobertura de datos), hallazgos redactados a partir de los datos, gráfica con umbrales, detalle por día, registro de alertas, notas y firmas. Numeración "Página X de Y".
+- **Excel** (exceljs): hojas *Resumen*, *Resumen diario* (con filtros y barras de rango óptimo), *Eventos* y *Lecturas* (cada lectura hasta 7 días; promedios de 5 minutos en periodos más largos).
+
+Cada descarga queda en la bitácora (`report.exported`).
 
 ## 3. Ver la base de datos en Adminer
 

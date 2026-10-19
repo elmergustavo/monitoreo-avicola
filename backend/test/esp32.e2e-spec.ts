@@ -37,7 +37,8 @@ describe('ESP32 endpoints (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma?.device.deleteMany({ where: { id: deviceId } });
+    // Guard: with an undefined id, deleteMany would match every device.
+    if (deviceId) await prisma?.device.delete({ where: { id: deviceId } });
     await app?.close();
   });
 
