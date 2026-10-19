@@ -54,12 +54,9 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = (req.cookies as Record<string, string | undefined>)[REFRESH_COOKIE];
     if (!token) throw new UnauthorizedException('Session expired');
-    try {
-      return this.respondWithTokens(res, await this.auth.refresh(token));
-    } catch (error) {
-      this.clearRefreshCookie(res);
-      throw error;
-    }
+    // A failed refresh does not clear the cookie: another tab may have just
+    // rotated it, and clearing it here would sign that tab out too.
+    return this.respondWithTokens(res, await this.auth.refresh(token));
   }
 
   @Post('logout')
