@@ -98,12 +98,52 @@ void appendNumber(String &json, const char *key, float value) {
 
 // ----- WiFi and time --------------------------------------------------------
 
+const char *wifiStatusText(wl_status_t status) {
+  switch (status) {
+    case WL_NO_SSID_AVAIL: return "network not found (check the name, and that it is 2.4 GHz)";
+    case WL_CONNECT_FAILED: return "connection failed (check the password)";
+    case WL_CONNECTION_LOST: return "connection lost";
+    case WL_DISCONNECTED: return "disconnected (still trying, or wrong password)";
+    case WL_IDLE_STATUS: return "idle";
+    default: return "unknown";
+  }
+}
+
+// Lists nearby networks once, to diagnose a wrong name or a 5 GHz-only network.
+void scanNetworks() {
+  Serial.println("[wifi] scanning nearby 2.4 GHz networks...");
+  int count = WiFi.scanNetworks();
+  bool found = false;
+  for (int i = 0; i < count; i++) {
+    bool match = WiFi.SSID(i) == WIFI_SSID;
+    found = found || match;
+    Serial.printf("[wifi]   %s \"%s\" signal %d dBm, channel %d\n", match ? "->" : "  ", WiFi.SSID(i).c_str(),
+                  (int)WiFi.RSSI(i), (int)WiFi.channel(i));
+  }
+  if (count <= 0) Serial.println("[wifi]   no networks found");
+  Serial.printf("[wifi] \"%s\" %s\n", WIFI_SSID,
+                found ? "is visible: if it still fails, check the password"
+                      : "NOT found: check the exact name, or use the 2.4 GHz network");
+  WiFi.scanDelete();
+}
+
 void ensureWifi() {
-  if (WiFi.status() == WL_CONNECTED) return;
+  static bool scanned = false;
+  wl_status_t status = WiFi.status();
+  if (status == WL_CONNECTED) return;
   unsigned long now = millis();
   if (lastWifiAttemptAt != 0 && now - lastWifiAttemptAt < WIFI_RETRY_INTERVAL_MS) return;
+
+  if (lastWifiAttemptAt != 0) {
+    Serial.printf("[wifi] not connected: %s\n", wifiStatusText(status));
+    if (!scanned) {
+      scanned = true;
+      WiFi.disconnect();
+      scanNetworks();
+    }
+  }
   lastWifiAttemptAt = now;
-  Serial.printf("[wifi] connecting to %s...\n", WIFI_SSID);
+  Serial.printf("[wifi] connecting to \"%s\"...\n", WIFI_SSID);
   WiFi.disconnect();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }

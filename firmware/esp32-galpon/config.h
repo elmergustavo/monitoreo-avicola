@@ -23,7 +23,7 @@
 #define READING_INTERVAL_MS 30000UL     // send a reading every 30 s
 #define IRRIGATION_DEBOUNCE_MS 2000UL   // input must be stable this long
 #define HTTP_TIMEOUT_MS 10000UL
-#define WIFI_RETRY_INTERVAL_MS 10000UL
+#define WIFI_RETRY_INTERVAL_MS 30000UL  // give each attempt time to finish
 #define EVENT_RETRY_INTERVAL_MS 5000UL
 
 // Consecutive failed sensor reads before reporting a sensor_error event.
