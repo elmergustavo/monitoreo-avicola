@@ -5,7 +5,8 @@ Sistema de monitoreo de temperatura y riego para los galpones. Un ESP32 con sens
 ```
 monitoreo-avicola/
 ├── backend/            # API (NestJS + Prisma + PostgreSQL 18)
-├── frontend/           # Dashboard en React (pendiente)
+├── frontend/           # Dashboard en React (prototipo con datos de demostración)
+├── firmware/           # Firmware del ESP32 (DS18B20 + detección de riego)
 ├── docker-compose.yml  # Entorno local: postgres, adminer y api (perfil "full")
 └── .env.example
 ```
@@ -113,15 +114,16 @@ Tablas: `devices`, `device_settings`, `readings`, `events`. También puedes usar
 
 ## 4. Configurar el ESP32
 
-1. Averigua la IP de tu computadora en la red WiFi:
-   - Windows: `ipconfig` → "Dirección IPv4" del adaptador WiFi
-   - macOS: `ipconfig getifaddr en0` · Linux: `hostname -I`
-2. En el firmware configura:
+Las conexiones, la configuración y cómo cargar el firmware están en [`firmware/README.md`](firmware/README.md). En resumen:
+
+1. Copia `firmware/esp32-galpon/secrets.example.h` como `secrets.h` y pon el WiFi y la `API_KEY`.
+2. En `firmware/esp32-galpon/config.h` elige la URL:
    ```cpp
-   const char* API_URL = "http://<IP-de-mi-PC>:3000/api";   // ej. http://192.168.0.2:3000/api
-   const char* API_KEY = "<SEED_DEVICE_API_KEY de tu .env>";
+   #define API_URL "https://lasierraapi.tavcode.com/api"   // producción
+   #define API_URL "http://<IP-de-mi-PC>:3000/api"          // pruebas locales, ej. http://192.168.0.2:3000/api
    ```
-3. El ESP32 envía el header `x-api-key: <API_KEY>` y `Content-Type: application/json` a:
+   Para la IP de tu PC: Windows `ipconfig` ("Dirección IPv4" del adaptador WiFi) · macOS `ipconfig getifaddr en0` · Linux `hostname -I`.
+3. El ESP32 envía el header `x-api-key` y `Content-Type: application/json` a:
    - `POST {API_URL}/readings` con `{ "temperature": 29.50, "irrigation": false }` cada 30 s
    - `POST {API_URL}/events` con `{ "type": "irrigation_off", "temperature": 28.10, "durationMin": 8.5 }` cuando cambia el riego
 
