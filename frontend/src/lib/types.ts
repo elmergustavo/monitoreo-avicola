@@ -203,3 +203,81 @@ export interface NotificationItem {
   readAt: string | null;
   createdAt: string;
 }
+
+export type ChannelType = 'telegram' | 'whatsapp';
+
+export interface NotificationChannelView {
+  id: string;
+  type: ChannelType;
+  label: string | null;
+  isGroup: boolean;
+  active: boolean;
+  createdAt: string;
+  lastInboundAt: string | null;
+  /** WhatsApp: whether messages can reach the number right now (24 h window). */
+  windowOpen: boolean | null;
+}
+
+export interface NotificationGroup extends NotificationChannelView {
+  linkedBy: { id: string; name: string } | null;
+}
+
+export interface NotificationPreferences {
+  telegram: boolean;
+  whatsapp: boolean;
+  includeWarnings: boolean;
+  quietStart: string | null;
+  quietEnd: string | null;
+  dailySummary: boolean;
+}
+
+export interface NotificationProviders {
+  telegram: { configured: boolean; botUsername: string | null };
+  whatsapp: { configured: boolean; number: string | null; sandboxJoinCode: string | null };
+}
+
+export interface NotificationSettings {
+  providers: NotificationProviders;
+  preferences: NotificationPreferences;
+  channels: NotificationChannelView[];
+}
+
+export interface TelegramLink {
+  code: string;
+  expiresAt: string;
+  url: string;
+  botUsername: string;
+}
+
+export interface WhatsAppLink {
+  code: string;
+  expiresAt: string;
+  phone: string;
+  number: string;
+  message: string;
+  sandboxJoinCode: string | null;
+  url: string;
+}
+
+export interface GroupLink {
+  code: string;
+  expiresAt: string;
+  botUsername: string;
+  command: string;
+  addToGroupUrl: string;
+}
+
+export type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'skipped';
+
+export interface DeliveryItem {
+  id: string;
+  kind: NotificationKind;
+  severity: AlertSeverity | null;
+  title: string;
+  status: DeliveryStatus;
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  channel: { type: ChannelType; label: string | null; isGroup: boolean; user: { id: string; name: string } | null };
+}

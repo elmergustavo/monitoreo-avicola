@@ -149,6 +149,9 @@ npm run cli:prod -- rotate-device-key --device <id>                      # la ke
 | `GET /api/alerts?status&deviceId&kind&severity&before` · `GET /api/alerts/stats?days&deviceId` · `GET /api/alerts/:id` · `POST /api/alerts/:id/acknowledge` | `telemetry.read` |
 | `POST /api/alerts/:id/resolve` · `PATCH /api/devices/:id/alert-rules` | `alerts.manage` |
 | `GET /api/notifications` · `/unread-count` · `POST /api/notifications/:id/read` · `/read-all` | Sesión |
+| `GET /api/notifications/settings` · `PATCH /api/notifications/preferences` · `POST /api/notifications/channels/telegram/link` · `/channels/whatsapp/link` · `DELETE /api/notifications/channels/:id` · `POST /api/notifications/test` | Sesión |
+| `GET /api/notifications/groups` · `POST /api/notifications/groups/link` · `DELETE /api/notifications/groups/:id` · `GET /api/notifications/deliveries` · `POST /api/notifications/deliveries/:id/retry` | `alerts.manage` |
+| `POST /api/telegram/webhook` (secreto en cabecera) · `POST /api/whatsapp/webhook` (firma de Twilio) | Público, verificado |
 | `GET /api/audit-logs` | `audit.read` |
 
 La documentación interactiva completa está en `/api/docs`.
@@ -180,7 +183,28 @@ Cada problema se convierte en una **alerta** (un incidente) que se abre una sola
 - Tiempos por galpón (botón **Tiempos de alerta** en cada galpón, o `PATCH /api/devices/:id/alert-rules`): sin conexión 5 min, calor sostenido 10 min, frío sostenido 30 min, recordatorio 30 min, escalamiento 15 min.
 - En el dashboard: campana con contador, panel de alertas activas y notificaciones, avisos en vivo y aviso fijo en el resumen y en cada galpón.
 - Página **Alertas** (`/alertas`): resumen de 7/30/90 días (cantidad, tiempo de respuesta, duración, escaladas, por tipo) e historial agrupado por día con quién la atendió, cuánto duró y cómo se cerró. Los filtros quedan en la URL para compartir la vista.
-- Próximos canales: Telegram y WhatsApp (Twilio).
+
+#### Telegram y WhatsApp
+
+Cada notificación de la campana también sale por los chats que la persona vinculó en **Mi perfil**:
+
+- **Telegram**: el botón "Vincular" abre el bot con un código de un solo uso (`/start 123456`). Los mensajes de alerta traen **✋ Lo atiendo** y **📊 Ver galpón**. Comandos: `/estado`, `/alertas`, `/ayuda`, `/desvincular`.
+- **Grupo de la granja** (Administración → Notificaciones, `alerts.manage`): se agrega el bot al grupo y se escribe `/vincular 123456`. El grupo recibe aperturas, recordatorios, cierres, quién atiende cada alerta y el resumen diario. Para tocar "Lo atiendo" en el grupo, la persona debe tener su propio Telegram vinculado.
+- **WhatsApp (Twilio)**: la persona escribe su número y envía `VINCULAR 123456` desde ese número. Responde **OK** para atender la última alerta, **ESTADO** para ver los galpones, **ALERTAS** y **SALIR**. En el *sandbox* de Twilio cada persona envía primero `join <palabras>` y WhatsApp solo entrega mensajes dentro de las 24 h siguientes a su último mensaje; fuera de esa ventana el envío queda como "No enviado" y el perfil le pide escribir **ESTADO**.
+- **Preferencias por persona**: canal encendido o pausado, incluir advertencias, horario de silencio (solo críticas) y resumen diario. Las alertas críticas llegan siempre.
+- **Resumen diario a las 18:00** (Guatemala): temperaturas, tiempo en rango, riegos y alertas de cada galpón. En Telegram llega con el reporte PDF del día.
+- **Entrega confiable**: cada mensaje queda en `notification_deliveries` y se reintenta hasta 5 veces (30 s, 2 min, 10 min, 30 min). Si alguien bloquea el bot, su chat se desactiva. El registro con reintento manual está en Administración → Notificaciones.
+- Sin credenciales, cada canal simplemente queda apagado; el resto del sistema funciona igual.
+
+**Configurar Telegram**
+1. En Telegram, habla con [@BotFather](https://t.me/BotFather) → `/newbot` → copia el token.
+2. Local: `TELEGRAM_BOT_TOKEN=<token>` en `.env` (modo `polling`, no necesita URL pública).
+3. Producción: además `TELEGRAM_MODE=webhook`, `TELEGRAM_WEBHOOK_URL=https://lasierraapi.tavcode.com/api/telegram/webhook` y `TELEGRAM_WEBHOOK_SECRET` (`openssl rand -hex 24`). La API registra el webhook al arrancar. Un mismo bot no puede usarse en polling y webhook a la vez: usa un bot distinto para local.
+
+**Configurar WhatsApp (Twilio sandbox)**
+1. Crea una cuenta en twilio.com → *Messaging → Try it out → Send a WhatsApp message*. Anota el número y la frase `join …`.
+2. `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SANDBOX_JOIN_CODE="join …"` (y `TWILIO_WHATSAPP_FROM` si no es el número del sandbox).
+3. En la consola del sandbox, *When a message comes in*: `https://lasierraapi.tavcode.com/api/whatsapp/webhook` (POST), y la misma URL en `TWILIO_WEBHOOK_URL` (se usa para verificar la firma). Localmente hace falta un túnel (por ejemplo `ngrok http 3000`).
 
 ## 3. Ver la base de datos en Adminer
 
@@ -246,6 +270,11 @@ Variables de entorno:
 | `ACCESS_TOKEN_TTL_SECONDS` / `REFRESH_TOKEN_TTL_DAYS` | No | `900` / `30` |
 | `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` | Solo para el seed | Primer administrador. Sin `ADMIN_PASSWORD` se imprime una contraseña temporal |
 | `SEED_DEVICE_API_KEY` | Solo para el seed | Una key distinta a la de desarrollo (`openssl rand -hex 32`) |
+| `DASHBOARD_URL` | No | `https://lasierra.tavcode.com` (enlaces "Ver galpón" en Telegram y WhatsApp) |
+| `TELEGRAM_BOT_TOKEN` | No | Token de @BotFather. Sin él, Telegram queda apagado |
+| `TELEGRAM_MODE` / `TELEGRAM_WEBHOOK_URL` / `TELEGRAM_WEBHOOK_SECRET` | No | `webhook` / `https://lasierraapi.tavcode.com/api/telegram/webhook` / `openssl rand -hex 24` |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | No | Credenciales de Twilio. Sin ellas, WhatsApp queda apagado |
+| `TWILIO_WHATSAPP_FROM` / `TWILIO_SANDBOX_JOIN_CODE` / `TWILIO_WEBHOOK_URL` | No | `whatsapp:+14155238886` / `join …` / `https://lasierraapi.tavcode.com/api/whatsapp/webhook` |
 
 **Healthcheck:** `GET /api/health` (200 si la base de datos responde, 503 si no). La imagen ya incluye un `HEALTHCHECK` que lo consulta.
 

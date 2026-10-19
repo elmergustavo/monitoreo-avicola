@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/auth-context';
 import { PasswordForm } from '@/features/auth/password-form';
+import { NotificationSettingsSection } from '@/features/notifications/notification-settings';
 import { formatDateTime } from '@/lib/dates';
 import { PERMISSION_INFO, PERMISSION_ORDER } from '@/lib/permissions';
 
@@ -49,6 +50,13 @@ export function ProfilePage() {
           <PasswordForm submitLabel="Cambiar contraseña" onDone={() => void toast.success('Contraseña actualizada')} />
         </Panel>
       </div>
+      <section aria-labelledby="notifications-title" className="mt-10">
+        <h2 id="notifications-title" className="font-display text-xl font-semibold tracking-tight">
+          Notificaciones
+        </h2>
+        <p className="mt-1 mb-4 text-sm text-muted-foreground">Recibe las alertas de los galpones en tu celular.</p>
+        <NotificationSettingsSection />
+      </section>
     </>
   );
 }

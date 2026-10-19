@@ -2,10 +2,13 @@ import { plainToInstance, Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
+  Matches,
   Max,
   Min,
   MinLength,
@@ -79,6 +82,58 @@ export class EnvironmentVariables {
   @Min(1)
   @Max(365)
   REFRESH_TOKEN_TTL_DAYS = 30;
+
+  /** Public dashboard address, used in links sent by Telegram and WhatsApp. */
+  @IsOptional()
+  @IsUrl({ require_tld: false, require_protocol: true })
+  DASHBOARD_URL?: string;
+
+  // --- Telegram (optional: without a token the channel stays off) ---
+
+  /** Bot token from @BotFather. */
+  @IsOptional()
+  @IsString()
+  TELEGRAM_BOT_TOKEN?: string;
+
+  /** polling: the API asks Telegram for messages (local). webhook: Telegram calls the API (production). */
+  @IsIn(['polling', 'webhook'])
+  TELEGRAM_MODE: 'polling' | 'webhook' = 'polling';
+
+  /** Public URL of POST /api/telegram/webhook (webhook mode). */
+  @IsOptional()
+  @IsUrl({ require_protocol: true, protocols: ['https'] })
+  TELEGRAM_WEBHOOK_URL?: string;
+
+  /** Telegram sends it back in a header so the API knows the call is genuine. */
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{16,256}$/, {
+    message: 'TELEGRAM_WEBHOOK_SECRET must be 16-256 letters, digits, _ or -',
+  })
+  TELEGRAM_WEBHOOK_SECRET?: string;
+
+  // --- WhatsApp through Twilio (optional) ---
+
+  @IsOptional()
+  @Matches(/^AC[0-9a-fA-F]{32}$/, { message: 'TWILIO_ACCOUNT_SID must look like AC + 32 hex' })
+  TWILIO_ACCOUNT_SID?: string;
+
+  @IsOptional()
+  @IsString()
+  TWILIO_AUTH_TOKEN?: string;
+
+  /** Sender number. The sandbox one by default. */
+  @Matches(/^whatsapp:\+\d{8,15}$/, { message: 'TWILIO_WHATSAPP_FROM must be whatsapp:+<number>' })
+  TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886';
+
+  /** Sandbox only: the "join <words>" phrase people send first. Shown in the dashboard. */
+  @IsOptional()
+  @IsString()
+  TWILIO_SANDBOX_JOIN_CODE?: string;
+
+  /** Public URL of POST /api/whatsapp/webhook, exactly as set in Twilio (used to verify signatures). */
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  TWILIO_WEBHOOK_URL?: string;
 }
 
 /**
@@ -86,7 +141,9 @@ export class EnvironmentVariables {
  * invalid the application refuses to start and lists every problem.
  */
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
-  const env = plainToInstance(EnvironmentVariables, config, {
+  // "TELEGRAM_BOT_TOKEN=" (empty) means "not set", so optional checks skip it.
+  const present = Object.fromEntries(Object.entries(config).filter(([, value]) => value !== ''));
+  const env = plainToInstance(EnvironmentVariables, present, {
     exposeDefaultValues: true,
   });
   const errors = validateSync(env, { skipMissingProperties: false });

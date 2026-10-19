@@ -1,4 +1,4 @@
-import { BellRing, ClipboardList, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
+import { BellRing, ClipboardList, MessageSquareShare, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { BrandMark } from '@/components/brand-mark';
@@ -49,6 +49,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: '/administracion/galpones', label: 'Dispositivos', icon: Cpu, permission: 'devices.manage' },
   { to: '/administracion/usuarios', label: 'Usuarios', icon: Users, permission: 'users.read' },
   { to: '/administracion/roles', label: 'Roles y permisos', icon: ShieldCheck, permission: 'roles.manage' },
+  { to: '/administracion/notificaciones', label: 'Notificaciones', icon: MessageSquareShare, permission: 'alerts.manage' },
   { to: '/administracion/bitacora', label: 'Bitácora', icon: ClipboardList, permission: 'audit.read' },
 ];
 

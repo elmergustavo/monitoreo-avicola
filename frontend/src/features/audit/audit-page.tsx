@@ -5,11 +5,13 @@ import {
   Hand,
   FileDown,
   KeyRound,
+  Link2,
   LogIn,
   LogOut,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Unlink,
   UserCog,
   UserPlus,
   type LucideIcon,
@@ -34,6 +36,7 @@ const FILTERS = [
   { value: 'device.', label: 'Galpones' },
   { value: 'report.', label: 'Reportes' },
   { value: 'alert.', label: 'Alertas' },
+  { value: 'notifications.', label: 'Notificaciones' },
 ] as const;
 
 const meta = (entry: AuditEntry, key: string): string | undefined => {
@@ -72,11 +75,24 @@ function describe(entry: AuditEntry): { icon: LucideIcon; text: string; alert?: 
     case 'device.settings_updated':
       return { icon: SlidersHorizontal, text: 'Cambió los umbrales de temperatura' };
     case 'alert.acknowledged':
-      return { icon: Hand, text: `Atendió la alerta ${meta(entry, 'device') ? `de ${meta(entry, 'device')}` : ''}`.trim() };
+      return {
+        icon: Hand,
+        text: `Atendió la alerta ${meta(entry, 'device') ? `de ${meta(entry, 'device')}` : ''}${
+          meta(entry, 'via') ? ` desde ${meta(entry, 'via') === 'whatsapp' ? 'WhatsApp' : 'Telegram'}` : ''
+        }`.trim(),
+      };
     case 'alert.resolved':
       return { icon: BellOff, text: `Cerró a mano una alerta ${meta(entry, 'device') ? `de ${meta(entry, 'device')}` : ''}`.trim() };
     case 'device.alert_rules_updated':
       return { icon: SlidersHorizontal, text: 'Cambió los tiempos de alerta de un galpón' };
+    case 'notifications.channel_linked':
+      return { icon: Link2, text: `Vinculó su ${meta(entry, 'type') === 'whatsapp' ? 'WhatsApp' : 'Telegram'} para recibir alertas` };
+    case 'notifications.channel_unlinked':
+      return { icon: Unlink, text: 'Desvinculó un chat de alertas' };
+    case 'notifications.group_linked':
+      return { icon: Link2, text: `Vinculó el grupo de Telegram ${meta(entry, 'title') ?? ''}`.trim() };
+    case 'notifications.group_unlinked':
+      return { icon: Unlink, text: `Desvinculó el grupo de Telegram ${meta(entry, 'title') ?? ''}`.trim() };
     case 'report.exported': {
       const format = meta(entry, 'format') === 'xlsx' ? 'Excel' : 'PDF';
       const from = meta(entry, 'from');

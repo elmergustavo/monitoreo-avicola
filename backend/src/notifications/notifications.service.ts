@@ -3,6 +3,7 @@ import type { Permission } from '../auth/permissions.js';
 import type { AlertSeverity, NotificationKind } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TelemetryStreamService } from '../telemetry/telemetry-stream.service.js';
+import { DeliveryService, type DailyReportAttachment } from './delivery.service.js';
 
 export interface NewNotification {
   kind: NotificationKind;
@@ -12,14 +13,23 @@ export interface NewNotification {
   alertId?: string | null;
   /** Shed the notification is about (lets the dashboard link to it). */
   deviceId?: string | null;
+  /** Severity of the alert behind it; decides quiet hours and "critical only". */
+  alertSeverity?: AlertSeverity | null;
+  /** Also post it in the linked Telegram groups. */
+  toGroups?: boolean;
+  attachment?: DailyReportAttachment | null;
 }
 
-/** Users' inboxes. Channel delivery (Telegram, WhatsApp) builds on top of this. */
+/**
+ * Users' inboxes. Every inbox entry is also queued for the person's Telegram
+ * and WhatsApp, following their preferences.
+ */
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stream: TelemetryStreamService,
+    private readonly deliveries: DeliveryService,
   ) {}
 
   /** Active users whose role has the given permission. */
@@ -31,10 +41,19 @@ export class NotificationsService {
     return users.map((u) => u.id);
   }
 
-  /** Writes one inbox entry per user and pushes it to their open dashboards. */
-  async send(userIds: string[], notification: NewNotification): Promise<number> {
+  /**
+   * Writes one inbox entry per user, pushes it to their open dashboards and
+   * queues it for their channels (and the groups, if asked).
+   */
+  async send(
+    userIds: string[],
+    notification: NewNotification,
+  ): Promise<{ inbox: number; deliveries: number }> {
     const unique = [...new Set(userIds)];
-    if (unique.length === 0) return 0;
+    const groupDeliveries = notification.toGroups
+      ? await this.deliveries.enqueueForGroups(notification)
+      : 0;
+    if (unique.length === 0) return { inbox: 0, deliveries: groupDeliveries };
     const created = await this.prisma.notification.createManyAndReturn({
       data: unique.map((userId) => ({
         userId,
@@ -61,7 +80,8 @@ export class NotificationsService {
         },
       });
     }
-    return created.length;
+    const personal = await this.deliveries.enqueueForUsers(created, notification);
+    return { inbox: created.length, deliveries: personal + groupDeliveries };
   }
 
   async list(userId: string, params: { before?: Date; limit: number; unreadOnly?: boolean }) {

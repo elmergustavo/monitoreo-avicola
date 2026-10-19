@@ -12,6 +12,7 @@ import { EnvironmentVariables, NodeEnv, validateEnv } from './config/env.validat
 import { DevicesModule } from './devices/devices.module.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.module.js';
+import { MessagingModule } from './messaging/messaging.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReadingsModule } from './readings/readings.module.js';
@@ -53,6 +54,7 @@ import { UsersModule } from './users/users.module.js';
     ReportsModule,
     NotificationsModule,
     AlertsModule,
+    MessagingModule,
     HealthModule,
     ReadingsModule,
     EventsModule,

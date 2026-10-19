@@ -123,12 +123,16 @@ model User {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  role               Role           @relation(fields: [roleId], references: [id])
+  role               Role                     @relation(fields: [roleId], references: [id])
   sessions           Session[]
   auditLogs          AuditLog[]
   notifications      Notification[]
-  acknowledgedAlerts Alert[]        @relation("AlertAcknowledgedBy")
-  resolvedAlerts     Alert[]        @relation("AlertResolvedBy")
+  acknowledgedAlerts Alert[]                  @relation("AlertAcknowledgedBy")
+  resolvedAlerts     Alert[]                  @relation("AlertResolvedBy")
+  channels           NotificationChannel[]    @relation("ChannelOwner")
+  linkedGroups       NotificationChannel[]    @relation("ChannelLinkedBy")
+  linkCodes          ChannelLinkCode[]
+  notificationPrefs  NotificationPreferences?
 
   @@index([roleId])
   @@map("users")
@@ -260,10 +264,118 @@ model Notification {
   readAt    DateTime?        @map("read_at") @db.Timestamptz(3)
   createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  alert Alert? @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alert      Alert?                 @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+enum ChannelType {
+  telegram
+  whatsapp
+
+  @@map("channel_type")
+}
+
+enum DeliveryStatus {
+  pending
+  sent
+  failed
+  skipped
+
+  @@map("delivery_status")
+}
+
+/// Where a person (or the farm's Telegram group) receives notifications outside the dashboard.
+model NotificationChannel {
+  id            String      @id @default(uuid(7)) @db.Uuid
+  /// Null for a group chat: groups belong to the farm, not to one person.
+  userId        String?     @map("user_id") @db.Uuid
+  type          ChannelType
+  /// Telegram chat id, or WhatsApp number in E.164 (+50255551234).
+  address       String      @db.VarChar(64)
+  /// "@usuario", group title or masked phone, for display.
+  label         String?     @db.VarChar(120)
+  isGroup       Boolean     @default(false) @map("is_group")
+  active        Boolean     @default(true)
+  /// Last message received from this chat (WhatsApp only lets us write within 24 h).
+  lastInboundAt DateTime?   @map("last_inbound_at") @db.Timestamptz(3)
+  linkedById    String?     @map("linked_by_id") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user       User?                  @relation("ChannelOwner", fields: [userId], references: [id], onDelete: Cascade)
+  linkedBy   User?                  @relation("ChannelLinkedBy", fields: [linkedById], references: [id], onDelete: SetNull)
+  deliveries NotificationDelivery[]
+
+  @@unique([type, address])
+  @@index([userId])
+  @@map("notification_channels")
+}
+
+/// One-time code that proves a chat or phone belongs to the user who asked for it.
+model ChannelLinkCode {
+  code      String      @id @db.VarChar(16)
+  userId    String      @map("user_id") @db.Uuid
+  type      ChannelType
+  isGroup   Boolean     @default(false) @map("is_group")
+  /// WhatsApp number the code was issued for.
+  address   String?     @db.VarChar(64)
+  expiresAt DateTime    @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("channel_link_codes")
+}
+
+model NotificationPreferences {
+  userId          String   @id @map("user_id") @db.Uuid
+  telegram        Boolean  @default(true)
+  whatsapp        Boolean  @default(true)
+  /// False: only critical alerts reach Telegram and WhatsApp.
+  includeWarnings Boolean  @default(true) @map("include_warnings")
+  /// "22:00". During quiet hours only critical alerts go out.
+  quietStart      String?  @map("quiet_start") @db.VarChar(5)
+  quietEnd        String?  @map("quiet_end") @db.VarChar(5)
+  dailySummary    Boolean  @default(true) @map("daily_summary")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+/// Outbox: one message to one channel, retried until it is sent or gives up.
+model NotificationDelivery {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  channelId         String           @map("channel_id") @db.Uuid
+  notificationId    String?          @map("notification_id") @db.Uuid
+  alertId           String?          @map("alert_id") @db.Uuid
+  deviceId          String?          @map("device_id") @db.Uuid
+  kind              NotificationKind
+  severity          AlertSeverity?
+  title             String           @db.VarChar(160)
+  body              String           @db.VarChar(1000)
+  /// Extra content built at send time, e.g. { "type": "daily_report", "date": "2026-10-19" }.
+  attachment        Json?
+  status            DeliveryStatus   @default(pending)
+  attempts          Int              @default(0)
+  nextAttemptAt     DateTime         @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  lastError         String?          @map("last_error") @db.VarChar(500)
+  providerMessageId String?          @map("provider_message_id") @db.VarChar(120)
+  sentAt            DateTime?        @map("sent_at") @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  channel      NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  notification Notification?       @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([channelId, createdAt])
+  @@index([createdAt])
+  @@map("notification_deliveries")
 }

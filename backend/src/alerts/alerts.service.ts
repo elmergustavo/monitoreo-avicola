@@ -294,8 +294,11 @@ export class AlertsService {
     await this.notifications.send(recipients, {
       kind: phase,
       severity: phase === 'alert_resolved' ? null : alert.severity,
+      alertSeverity: alert.severity,
       alertId: alert.id,
       deviceId: alert.deviceId,
+      // The farm group gets the incident's story; escalations are for managers only.
+      toGroups: phase !== 'alert_escalated',
       ...message,
     });
   }

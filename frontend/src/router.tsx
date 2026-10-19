@@ -9,6 +9,7 @@ import { RequireAuth, RequirePermission } from '@/features/auth/route-guards';
 import { DevicesPage } from '@/features/devices/devices-page';
 import { HomePage } from '@/features/monitoring/home-page';
 import { ShedPage } from '@/features/monitoring/shed-page';
+import { NotificationsAdminPage } from '@/features/notifications/notifications-admin-page';
 import { ProfilePage } from '@/features/profile/profile-page';
 import { ReportsPage } from '@/features/reports/reports-page';
 import { RolesPage } from '@/features/roles/roles-page';
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
               { element: <RequirePermission permission="devices.manage" />, children: [{ path: 'galpones', element: <DevicesPage /> }] },
               { element: <RequirePermission permission="users.read" />, children: [{ path: 'usuarios', element: <UsersPage /> }] },
               { element: <RequirePermission permission="roles.manage" />, children: [{ path: 'roles', element: <RolesPage /> }] },
+              { element: <RequirePermission permission="alerts.manage" />, children: [{ path: 'notificaciones', element: <NotificationsAdminPage /> }] },
               { element: <RequirePermission permission="audit.read" />, children: [{ path: 'bitacora', element: <AuditPage /> }] },
             ],
           },
