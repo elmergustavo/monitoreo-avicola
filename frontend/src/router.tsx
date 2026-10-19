@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router';
 import { AppShell } from '@/components/app-shell';
 import { NoAccess } from '@/components/no-access';
 import { AlertsPage } from '@/features/alerts/alerts-page';
+import { AnalyticsPage } from '@/features/analytics/analytics-page';
 import { AuditPage } from '@/features/audit/audit-page';
 import { ChangePasswordPage } from '@/features/auth/change-password-page';
 import { LoginPage } from '@/features/auth/login-page';
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
             children: [
               { path: '/galpones/:id', element: <ShedPage /> },
               { path: '/alertas', element: <AlertsPage /> },
+              { path: '/analisis', element: <AnalyticsPage /> },
             ],
           },
           {

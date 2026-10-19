@@ -7,7 +7,7 @@ export const MAX_REPORT_DAYS = 92;
 const GT_OFFSET_MS = -6 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type PresetKey = 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'lastMonth' | 'custom';
+export type PresetKey = 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisMonth' | 'lastMonth' | 'custom';
 
 export interface DateRange {
   from: string;
@@ -46,6 +46,8 @@ export function presetRange(preset: Exclude<PresetKey, 'custom'>, now = Date.now
       return { from: addDays(today, -6), to: today };
     case 'last30':
       return { from: addDays(today, -29), to: today };
+    case 'last90':
+      return { from: addDays(today, -89), to: today };
     case 'thisMonth':
       return { from: monthStart, to: today };
     case 'lastMonth': {

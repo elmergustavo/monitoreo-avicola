@@ -152,6 +152,7 @@ npm run cli:prod -- rotate-device-key --device <id>                      # la ke
 | `GET /api/notifications/settings` · `PATCH /api/notifications/preferences` · `POST /api/notifications/channels/telegram/link` · `/channels/whatsapp/link` · `DELETE /api/notifications/channels/:id` · `POST /api/notifications/test` | Sesión |
 | `GET /api/notifications/groups` · `POST /api/notifications/groups/link` · `DELETE /api/notifications/groups/:id` · `GET /api/notifications/deliveries` · `POST /api/notifications/deliveries/:id/retry` | `alerts.manage` |
 | `POST /api/telegram/webhook` (secreto en cabecera) · `POST /api/whatsapp/webhook` (firma de Twilio) | Público, verificado |
+| `GET /api/analytics/summary` · `/series` · `/heatmap` · `/ranges` · `/irrigation` · `/compare` (`?deviceId&from&to`, hasta 92 días) | `telemetry.read` |
 | `GET /api/audit-logs` | `audit.read` |
 
 La documentación interactiva completa está en `/api/docs`.
@@ -164,6 +165,19 @@ Sección **Reportes** del dashboard (permiso `reports.export`): se elige galpón
 - **Excel** (exceljs): hojas *Resumen*, *Resumen diario* (con filtros y barras de rango óptimo), *Eventos* y *Lecturas* (cada lectura hasta 7 días; promedios de 5 minutos en periodos más largos).
 
 Cada descarga queda en la bitácora (`report.exported`).
+
+### Análisis
+
+Sección **Análisis** del dashboard (`telemetry.read`): se elige galpón y periodo (hoy, 7, 30 o 90 días, mes o personalizado; queda en la URL) y muestra:
+
+- **Indicadores** con su tendencia frente al periodo anterior de igual duración: temperatura promedio, tiempo en rango óptimo, máxima y alertas.
+- **Explorador de temperatura**: promedio con banda de mínima y máxima, franjas de umbrales, riegos y alertas. Zoom con la barra inferior o Ctrl + rueda; descarga en PNG y CSV.
+- **Mapa de calor por hora**: temperatura promedio de cada hora de cada día.
+- **Tiempo en cada rango**: porcentaje de cada día en fresco, óptimo, calor y alerta.
+- **¿Funciona el riego?**: curva promedio de la temperatura alrededor de cada riego, baja a los 15 min, riegos efectivos y tiempo para volver al rango óptimo.
+- **Comparar**: el último día contra el día anterior y el promedio de 7 días (y contra otros galpones cuando hay más de uno).
+
+Cada gráfica trae una frase con la conclusión principal. Todo se calcula en PostgreSQL; los días anteriores al registro del galpón se omiten.
 
 ### Alertas y notificaciones
 

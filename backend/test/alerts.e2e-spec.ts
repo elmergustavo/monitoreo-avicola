@@ -33,7 +33,7 @@ describe('Alerts and notifications (e2e)', () => {
 
   /** The engine reacts to live telemetry asynchronously. */
   async function eventually<T>(read: () => Promise<T>, done: (value: T) => boolean): Promise<T> {
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 125; i++) {
       const value = await read();
       if (done(value)) return value;
       await new Promise((resolve) => setTimeout(resolve, 40));

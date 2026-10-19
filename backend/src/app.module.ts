@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AlertsModule } from './alerts/alerts.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -52,6 +53,7 @@ import { UsersModule } from './users/users.module.js';
     DevicesModule,
     TelemetryModule,
     ReportsModule,
+    AnalyticsModule,
     NotificationsModule,
     AlertsModule,
     MessagingModule,

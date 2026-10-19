@@ -10,13 +10,13 @@ import {
   RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { ChoiceChips } from '@/components/choice-chips';
+import { DateField } from '@/components/date-field';
 import { PageHeader } from '@/components/page-header';
 import { Panel, PanelTitle } from '@/components/panel';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDevices } from '@/features/monitoring/queries';
@@ -283,72 +283,6 @@ function Step({ number, title, children }: { number: number; title: string; chil
 }
 
 /** Radio buttons styled as chips; arrow keys move between options natively. */
-function ChoiceChips<T extends string>({
-  name,
-  legend,
-  value,
-  options,
-  onChange,
-}: {
-  name: string;
-  legend: string;
-  value: T;
-  options: Array<{ key: T; label: string }>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <fieldset>
-      <legend className="sr-only">{legend}</legend>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <label
-            key={option.key}
-            className={cn(
-              'relative inline-flex h-10 cursor-pointer items-center rounded-full border px-4 text-sm transition-colors',
-              'has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50',
-              value === option.key
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'bg-card hover:border-foreground/25 hover:bg-muted/60',
-            )}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={option.key}
-              checked={value === option.key}
-              onChange={() => onChange(option.key)}
-              className="sr-only"
-            />
-            {option.label}
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-function DateField({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  min?: string;
-  max?: string;
-  onChange: (value: string) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type="date" value={value} min={min} max={max} onChange={(e) => onChange(e.target.value)} className="h-11" />
-    </div>
-  );
-}
-
 function FormatCard({ format, checked, onSelect }: { format: ReportFormat; checked: boolean; onSelect: () => void }) {
   const info = FORMATS[format];
   const Icon = info.icon;

@@ -1,4 +1,4 @@
-import { BellRing, ClipboardList, MessageSquareShare, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
+import { BellRing, ChartSpline, ClipboardList, MessageSquareShare, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { BrandMark } from '@/components/brand-mark';
@@ -120,6 +120,7 @@ function AppSidebar() {
                           online={device.online}
                         />
                       ))}
+                    <NavMenuItem item={{ to: '/analisis', label: 'Análisis', icon: ChartSpline }} />
                     <NavMenuItem item={{ to: '/alertas', label: 'Alertas', icon: BellRing }} count={pendingAlerts} />
                   </>
                 )}
