@@ -2,6 +2,7 @@ import { Download, ImageDown } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { EChart, type EChartInstance, type EChartOption } from '@/components/echart';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { axisLabelStyle, tooltipStyle, useChartColors } from '@/lib/chart-colors';
 import { formatDayLabel, formatShortDay, formatTemp, formatTime } from '@/lib/format';
 import { classifyTemperature, THERMAL_LABEL } from '@/lib/thermal';
@@ -21,6 +22,9 @@ const BUCKET_LABEL: Record<number, string> = {
 /** Chart 1: the whole period with zoom, min–max band, thresholds, irrigation and alerts. */
 export function ExplorerChart({ params, fileName, deviceName }: { params: AnalyticsParams; fileName: string; deviceName: string }) {
   const query = useAnalytics('series', params);
+  const zoomHint = useIsMobile()
+    ? 'Para acercarte usa la barra de abajo o pellizca la gráfica.'
+    : 'Para acercarte usa la barra de abajo o Ctrl + rueda del mouse; arrastra para moverte.';
   const colors = useChartColors();
   const chartRef = useRef<EChartInstance | null>(null);
   const data = query.data;
@@ -46,8 +50,8 @@ export function ExplorerChart({ params, fileName, deviceName }: { params: Analyt
       title="Explorador de temperatura"
       description={
         data
-          ? `${deviceName} · ${BUCKET_LABEL[data.bucketSeconds] ?? 'promedios'}. Para acercarte usa la barra de abajo o Ctrl + rueda del mouse; arrastra para moverte.`
-          : 'Para acercarte usa la barra de abajo o Ctrl + rueda del mouse; arrastra para moverte.'
+          ? `${deviceName} · ${BUCKET_LABEL[data.bucketSeconds] ?? 'promedios'}. ${zoomHint}`
+          : zoomHint
       }
       actions={
         <>
