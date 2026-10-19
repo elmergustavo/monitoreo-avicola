@@ -5,6 +5,7 @@
 export const PERMISSIONS = [
   'telemetry.read',
   'reports.export',
+  'alerts.manage',
   'settings.manage',
   'devices.manage',
   'users.read',
@@ -38,8 +39,8 @@ export const SYSTEM_ROLES: SystemRoleDefinition[] = [
   {
     key: 'supervisor',
     name: 'Encargado',
-    description: 'Ve los galpones, descarga reportes y ajusta los umbrales de temperatura.',
-    permissions: ['telemetry.read', 'reports.export', 'settings.manage'],
+    description: 'Ve los galpones, descarga reportes, gestiona alertas y ajusta los umbrales.',
+    permissions: ['telemetry.read', 'reports.export', 'alerts.manage', 'settings.manage'],
   },
   {
     key: 'viewer',

@@ -1,7 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { alertKeys, notificationKeys } from '@/features/alerts/queries';
 import { API_URL, getAccessToken, refreshAccessToken } from '@/lib/api';
-import type { Device, DeviceEventDto } from '@/lib/types';
+import type { Device, DeviceEventDto, NotificationItem } from '@/lib/types';
 import { LiveContext, type LiveStatus } from './live-context';
 import { queryKeys, toEvent } from './queries';
 import type { DeviceEvent, Reading } from './types';
@@ -18,6 +21,13 @@ interface EventMessage {
   event: DeviceEventDto;
 }
 
+interface NotificationMessage {
+  notification: Pick<NotificationItem, 'id' | 'kind' | 'severity' | 'title' | 'body' | 'alertId' | 'deviceId' | 'createdAt'>;
+}
+
+/** Inbox entries that also pop up as a toast. */
+const TOAST_KINDS = new Set(['alert_opened', 'alert_escalated', 'alert_resolved']);
+
 /**
  * Keeps a server-sent events connection to /stream and merges each new
  * reading/event into the React Query cache, so every screen updates live.
@@ -27,6 +37,12 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<LiveStatus>('off');
   const [lastMessageAt, setLastMessageAt] = useState<number | null>(null);
+  const navigate = useNavigate();
+  // Read through a ref so a new navigate function does not reopen the stream.
+  const navigateRef = useRef(navigate);
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -53,10 +69,30 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
       void queryClient.invalidateQueries({ queryKey: queryKeys.summary(deviceId) });
     };
 
+    const onAlert = () => void queryClient.invalidateQueries({ queryKey: alertKeys.all });
+
+    const onNotification = ({ notification }: NotificationMessage) => {
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+      if (!TOAST_KINDS.has(notification.kind)) return;
+      const options = {
+        description: notification.body,
+        duration: notification.severity === 'critical' ? 10_000 : 6_000,
+        action: {
+          label: 'Ver',
+          onClick: () => void navigateRef.current(notification.deviceId ? `/galpones/${notification.deviceId}` : '/'),
+        },
+      };
+      if (notification.kind === 'alert_resolved') toast.success(notification.title, options);
+      else if (notification.severity === 'critical') toast.error(notification.title, options);
+      else toast.warning(notification.title, options);
+    };
+
     const dispatch = (type: string, data: string) => {
       setLastMessageAt(Date.now());
       if (type === 'reading') onReading(JSON.parse(data) as ReadingMessage);
       if (type === 'event') onEvent(JSON.parse(data) as EventMessage);
+      if (type === 'alert') onAlert();
+      if (type === 'notification') onNotification(JSON.parse(data) as NotificationMessage);
     };
 
     async function connect(): Promise<void> {

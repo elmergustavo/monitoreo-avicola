@@ -1,4 +1,5 @@
 import { ChevronRight, Droplets, Plus, Warehouse } from 'lucide-react';
+import { ActiveAlertsBanner } from '@/features/alerts/active-alerts-banner';
 import { Link } from 'react-router';
 import { DataFreshness } from '@/components/data-freshness';
 import { PageHeader } from '@/components/page-header';
@@ -34,6 +35,8 @@ export function OverviewPage() {
         title={`Hola, ${user?.name.split(' ')[0] ?? ''}`}
         description="Estado actual de los galpones de Granjas Avícolas La Sierra."
       />
+
+      <ActiveAlertsBanner />
 
       {isError ? (
         <div className="rounded-xl border bg-card p-6 text-sm">

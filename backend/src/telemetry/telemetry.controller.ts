@@ -1,8 +1,9 @@
 import { Controller, Get, MessageEvent, Param, ParseUUIDPipe, Query, Sse } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { interval, map, merge, type Observable } from 'rxjs';
-import { RequirePermissions } from '../auth/decorators.js';
+import { filter, interval, map, merge, type Observable } from 'rxjs';
+import type { AuthenticatedUser } from '../auth/auth.types.js';
+import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { EventsQueryDto, ReadingsQueryDto } from './dto/telemetry.dto.js';
 import { TelemetryStreamService } from './telemetry-stream.service.js';
 import { TelemetryService } from './telemetry.service.js';
@@ -41,10 +42,20 @@ export class TelemetryController {
   @Sse('stream')
   @SkipThrottle()
   @ApiProduces('text/event-stream')
-  @ApiOperation({ summary: 'Live readings and events (server-sent events: reading, event, ping)' })
-  live(): Observable<MessageEvent> {
+  @ApiOperation({
+    summary: 'Live updates (server-sent events: reading, event, alert, notification, ping)',
+  })
+  live(@CurrentUser() user: AuthenticatedUser): Observable<MessageEvent> {
     const messages = this.stream.messages$.pipe(
-      map(({ type, ...data }): MessageEvent => ({ type, data })),
+      // Inbox entries go only to their owner.
+      filter((message) => message.type !== 'notification' || message.userId === user.id),
+      map((message): MessageEvent => {
+        if (message.type === 'notification') {
+          return { type: message.type, data: { notification: message.notification } };
+        }
+        const { type, ...data } = message;
+        return { type, data };
+      }),
     );
     const heartbeat = interval(HEARTBEAT_MS).pipe(
       map((): MessageEvent => ({ type: 'ping', data: {} })),

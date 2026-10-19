@@ -12,3 +12,8 @@ export function startOfDayGt(at: Date): Date {
 export function dateKeyGt(at: Date): string {
   return new Date(at.getTime() + GT_OFFSET_MS).toISOString().slice(0, 10);
 }
+
+/** HH:mm in Guatemala time. */
+export function formatTime(at: Date): string {
+  return new Date(at.getTime() + GT_OFFSET_MS).toISOString().slice(11, 16);
+}

@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AlertsModule } from './alerts/alerts.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
@@ -10,6 +12,7 @@ import { EnvironmentVariables, NodeEnv, validateEnv } from './config/env.validat
 import { DevicesModule } from './devices/devices.module.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReadingsModule } from './readings/readings.module.js';
 import { ReportsModule } from './reports/reports.module.js';
@@ -39,6 +42,7 @@ import { UsersModule } from './users/users.module.js';
         skipIf: () => config.get('NODE_ENV', { infer: true }) === NodeEnv.Test,
       }),
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuditModule,
     AuthModule,
@@ -47,6 +51,8 @@ import { UsersModule } from './users/users.module.js';
     DevicesModule,
     TelemetryModule,
     ReportsModule,
+    NotificationsModule,
+    AlertsModule,
     HealthModule,
     ReadingsModule,
     EventsModule,

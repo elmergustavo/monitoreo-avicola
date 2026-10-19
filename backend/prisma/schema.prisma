@@ -34,6 +34,7 @@ model Device {
   settings DeviceSettings?
   readings Reading[]
   events   Event[]
+  alerts   Alert[]
 
   @@map("devices")
 }
@@ -67,11 +68,19 @@ model Event {
 }
 
 model DeviceSettings {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  deviceId  String   @unique @map("device_id") @db.Uuid
-  tempMin   Decimal  @default(27) @map("temp_min") @db.Decimal(5, 2)
-  tempMax   Decimal  @default(30) @map("temp_max") @db.Decimal(5, 2)
-  tempAlert Decimal  @default(32) @map("temp_alert") @db.Decimal(5, 2)
+  id        String  @id @default(uuid(7)) @db.Uuid
+  deviceId  String  @unique @map("device_id") @db.Uuid
+  tempMin   Decimal @default(27) @map("temp_min") @db.Decimal(5, 2)
+  tempMax   Decimal @default(30) @map("temp_max") @db.Decimal(5, 2)
+  tempAlert Decimal @default(32) @map("temp_alert") @db.Decimal(5, 2)
+
+  /// Alert rules (minutes).
+  offlineAfterMin  Int @default(5) @map("offline_after_min")
+  sustainedHeatMin Int @default(10) @map("sustained_heat_min")
+  sustainedColdMin Int @default(30) @map("sustained_cold_min")
+  reminderEveryMin Int @default(30) @map("reminder_every_min")
+  escalateAfterMin Int @default(15) @map("escalate_after_min")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
@@ -114,9 +123,12 @@ model User {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  role      Role       @relation(fields: [roleId], references: [id])
-  sessions  Session[]
-  auditLogs AuditLog[]
+  role               Role           @relation(fields: [roleId], references: [id])
+  sessions           Session[]
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+  acknowledgedAlerts Alert[]        @relation("AlertAcknowledgedBy")
+  resolvedAlerts     Alert[]        @relation("AlertResolvedBy")
 
   @@index([roleId])
   @@map("users")
@@ -160,4 +172,98 @@ model AuditLog {
   @@index([createdAt])
   @@index([userId, createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Alerts and notifications
+// ---------------------------------------------------------------------------
+
+enum AlertKind {
+  heat_no_irrigation
+  prolonged_irrigation
+  sensor_error
+  device_offline
+  sustained_heat
+  sustained_cold
+
+  @@map("alert_kind")
+}
+
+enum AlertSeverity {
+  critical
+  warning
+
+  @@map("alert_severity")
+}
+
+enum AlertStatus {
+  open
+  acknowledged
+  resolved
+
+  @@map("alert_status")
+}
+
+/// An incident: opened once, reminded while nobody attends it, resolved once.
+/// At most one unresolved alert per (device, kind): see the partial unique
+/// index in the migration.
+model Alert {
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  deviceId           String        @map("device_id") @db.Uuid
+  kind               AlertKind
+  severity           AlertSeverity
+  status             AlertStatus   @default(open)
+  openedAt           DateTime      @default(now()) @map("opened_at") @db.Timestamptz(3)
+  triggerTemperature Decimal?      @map("trigger_temperature") @db.Decimal(5, 2)
+  peakTemperature    Decimal?      @map("peak_temperature") @db.Decimal(5, 2)
+  acknowledgedAt     DateTime?     @map("acknowledged_at") @db.Timestamptz(3)
+  acknowledgedById   String?       @map("acknowledged_by_id") @db.Uuid
+  resolvedAt         DateTime?     @map("resolved_at") @db.Timestamptz(3)
+  resolvedById       String?       @map("resolved_by_id") @db.Uuid
+  /// Why it closed, in Spanish (e.g. "Se encendió el riego").
+  resolution         String?       @db.VarChar(255)
+  lastNotifiedAt     DateTime      @default(now()) @map("last_notified_at") @db.Timestamptz(3)
+  reminderCount      Int           @default(0) @map("reminder_count")
+  escalatedAt        DateTime?     @map("escalated_at") @db.Timestamptz(3)
+  metadata           Json?
+
+  device         Device         @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  acknowledgedBy User?          @relation("AlertAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  resolvedBy     User?          @relation("AlertResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  notifications  Notification[]
+
+  @@index([status, openedAt])
+  @@index([deviceId, openedAt])
+  @@map("alerts")
+}
+
+enum NotificationKind {
+  alert_opened
+  alert_reminder
+  alert_escalated
+  alert_resolved
+  daily_summary
+  test
+
+  @@map("notification_kind")
+}
+
+/// One entry in a user's inbox. Channel deliveries (Telegram, WhatsApp) hang off it.
+model Notification {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  alertId   String?          @map("alert_id") @db.Uuid
+  kind      NotificationKind
+  severity  AlertSeverity?
+  title     String           @db.VarChar(160)
+  body      String           @db.VarChar(1000)
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alert Alert? @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
 }

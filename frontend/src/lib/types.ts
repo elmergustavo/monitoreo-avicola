@@ -3,6 +3,7 @@
 export type Permission =
   | 'telemetry.read'
   | 'reports.export'
+  | 'alerts.manage'
   | 'settings.manage'
   | 'devices.manage'
   | 'users.read'
@@ -127,4 +128,55 @@ export interface RecentReport {
   to: string | null;
   deviceId: string | null;
   deviceName: string | null;
+}
+
+export type AlertKind =
+  | 'heat_no_irrigation'
+  | 'prolonged_irrigation'
+  | 'sensor_error'
+  | 'device_offline'
+  | 'sustained_heat'
+  | 'sustained_cold';
+
+export type AlertSeverity = 'critical' | 'warning';
+export type AlertStatus = 'open' | 'acknowledged' | 'resolved';
+
+export interface AlertView {
+  id: string;
+  kind: AlertKind;
+  label: string;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  device: { id: string; name: string };
+  openedAt: string;
+  triggerTemperature: number | null;
+  peakTemperature: number | null;
+  acknowledgedAt: string | null;
+  acknowledgedBy: { id: string; name: string } | null;
+  resolvedAt: string | null;
+  resolvedBy: { id: string; name: string } | null;
+  resolution: string | null;
+  reminderCount: number;
+  escalatedAt: string | null;
+}
+
+export type NotificationKind =
+  | 'alert_opened'
+  | 'alert_reminder'
+  | 'alert_escalated'
+  | 'alert_resolved'
+  | 'daily_summary'
+  | 'test';
+
+export interface NotificationItem {
+  id: string;
+  kind: NotificationKind;
+  severity: AlertSeverity | null;
+  title: string;
+  body: string;
+  alertId: string | null;
+  alertStatus: AlertStatus | null;
+  deviceId: string | null;
+  readAt: string | null;
+  createdAt: string;
 }

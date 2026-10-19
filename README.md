@@ -111,10 +111,10 @@ El dashboard usa inicio de sesión con correo y contraseña. No hay registro pú
 | Rol | Permisos |
 | --- | --- |
 | Administrador | Todos (no se puede editar) |
-| Encargado | `telemetry.read`, `reports.export`, `settings.manage` |
+| Encargado | `telemetry.read`, `reports.export`, `alerts.manage`, `settings.manage` |
 | Observador | `telemetry.read` |
 
-Permisos disponibles: `telemetry.read` (ver galpones y datos), `reports.export` (descargar reportes), `settings.manage` (umbrales), `devices.manage` (registrar galpones y API keys), `users.read`, `users.manage`, `roles.manage`, `audit.read` (bitácora). El administrador puede crear roles propios combinándolos.
+Permisos disponibles: `telemetry.read` (ver galpones y datos), `reports.export` (descargar reportes), `alerts.manage` (cerrar alertas, recibir escalamientos, ajustar sus tiempos), `settings.manage` (umbrales), `devices.manage` (registrar galpones y API keys), `users.read`, `users.manage`, `roles.manage`, `audit.read` (bitácora). El administrador puede crear roles propios combinándolos.
 
 > Los permisos nuevos se agregan solos al Administrador al correr el seed. En una base que ya tenía roles, actívalos para los demás roles desde **Roles y permisos**.
 
@@ -146,6 +146,9 @@ npm run cli:prod -- rotate-device-key --device <id>                      # la ke
 | `POST /api/users` · `PATCH /api/users/:id` · `POST /api/users/:id/reset-password` | `users.manage` |
 | `POST/PATCH/DELETE /api/roles` · `GET /api/roles/permissions` | `roles.manage` |
 | `GET /api/reports/operations?format=pdf\|xlsx&from&to&deviceId` · `GET /api/reports/recent` | `reports.export` |
+| `GET /api/alerts?status=active` · `GET /api/alerts/:id` · `POST /api/alerts/:id/acknowledge` | `telemetry.read` |
+| `POST /api/alerts/:id/resolve` · `PATCH /api/devices/:id/alert-rules` | `alerts.manage` |
+| `GET /api/notifications` · `/unread-count` · `POST /api/notifications/:id/read` · `/read-all` | Sesión |
 | `GET /api/audit-logs` | `audit.read` |
 
 La documentación interactiva completa está en `/api/docs`.
@@ -158,6 +161,25 @@ Sección **Reportes** del dashboard (permiso `reports.export`): se elige galpón
 - **Excel** (exceljs): hojas *Resumen*, *Resumen diario* (con filtros y barras de rango óptimo), *Eventos* y *Lecturas* (cada lectura hasta 7 días; promedios de 5 minutos en periodos más largos).
 
 Cada descarga queda en la bitácora (`report.exported`).
+
+### Alertas y notificaciones
+
+Cada problema se convierte en una **alerta** (un incidente) que se abre una sola vez, se recuerda mientras nadie la atiende y se cierra sola cuando el problema termina.
+
+| Alerta | Origen | Gravedad | Se cierra cuando… |
+| --- | --- | --- | --- |
+| Calor sin riego | Evento del ESP32 | Crítica | Se enciende el riego o la temperatura baja de la alerta − 0.5 °C por 5 min |
+| Error del sensor | Evento del ESP32 | Crítica | Llega una lectura válida |
+| Riego prolongado | Evento del ESP32 | Advertencia | Se apaga el riego |
+| Galpón sin conexión | Servidor (cada minuto) | Crítica | Vuelven a llegar datos |
+| Calor sostenido | Servidor | Crítica | Igual que calor sin riego |
+| Frío sostenido | Servidor | Advertencia | La temperatura supera el mínimo + 0.5 °C por 5 min |
+
+- **"Lo atiendo"** registra quién se hace cargo y detiene recordatorios y escalamiento.
+- **Recordatorios** cada 30 min mientras nadie la atiende (máx. 4). **Escalamiento** a quienes tienen `alerts.manage` si una crítica no se atiende en 15 min.
+- Tiempos por galpón (`PATCH /api/devices/:id/alert-rules`): sin conexión 5 min, calor sostenido 10 min, frío sostenido 30 min, recordatorio 30 min, escalamiento 15 min.
+- En el dashboard: campana con contador, panel de alertas activas y notificaciones, avisos en vivo y aviso fijo en el resumen y en cada galpón.
+- Próximos canales: Telegram y WhatsApp (Twilio).
 
 ## 3. Ver la base de datos en Adminer
 

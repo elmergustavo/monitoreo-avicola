@@ -29,6 +29,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { NotificationCenter } from '@/features/alerts/notification-center';
 import { useAuth } from '@/features/auth/auth-context';
 import { LiveProvider } from '@/features/monitoring/live-provider';
 import { useDevices } from '@/features/monitoring/queries';
@@ -61,6 +62,7 @@ export function AppShell() {
             <SidebarTrigger className="size-10" aria-label="Abrir o cerrar menú" />
             <div className="ml-auto flex items-center gap-1 sm:gap-3">
               {can('telemetry.read') && <LiveIndicator />}
+              <NotificationCenter />
               <ThemeToggle />
               <UserMenu />
             </div>

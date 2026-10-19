@@ -1,6 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import {
+  BellOff,
   Cpu,
+  Hand,
   FileDown,
   KeyRound,
   LogIn,
@@ -31,6 +33,7 @@ const FILTERS = [
   { value: 'role.', label: 'Roles' },
   { value: 'device.', label: 'Galpones' },
   { value: 'report.', label: 'Reportes' },
+  { value: 'alert.', label: 'Alertas' },
 ] as const;
 
 const meta = (entry: AuditEntry, key: string): string | undefined => {
@@ -68,6 +71,12 @@ function describe(entry: AuditEntry): { icon: LucideIcon; text: string; alert?: 
       return { icon: KeyRound, text: 'Generó una nueva API key de un galpón', alert: true };
     case 'device.settings_updated':
       return { icon: SlidersHorizontal, text: 'Cambió los umbrales de temperatura' };
+    case 'alert.acknowledged':
+      return { icon: Hand, text: `Atendió la alerta ${meta(entry, 'device') ? `de ${meta(entry, 'device')}` : ''}`.trim() };
+    case 'alert.resolved':
+      return { icon: BellOff, text: `Cerró a mano una alerta ${meta(entry, 'device') ? `de ${meta(entry, 'device')}` : ''}`.trim() };
+    case 'device.alert_rules_updated':
+      return { icon: SlidersHorizontal, text: 'Cambió los tiempos de alerta de un galpón' };
     case 'report.exported': {
       const format = meta(entry, 'format') === 'xlsx' ? 'Excel' : 'PDF';
       const from = meta(entry, 'from');

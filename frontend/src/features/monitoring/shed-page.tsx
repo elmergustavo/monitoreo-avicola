@@ -2,6 +2,7 @@ import { useParams } from 'react-router';
 import { DataFreshness } from '@/components/data-freshness';
 import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ActiveAlertsBanner } from '@/features/alerts/active-alerts-banner';
 import { useAuth } from '@/features/auth/auth-context';
 import { DaySummary } from './components/day-summary';
 import { EventFeed } from './components/event-feed';
@@ -42,6 +43,8 @@ export function ShedPage() {
         }
         actions={can('settings.manage') ? <SettingsDialog device={device} /> : undefined}
       />
+
+      <ActiveAlertsBanner deviceId={device.id} />
 
       {readings.isPending ? (
         <div className="grid gap-4 lg:grid-cols-12">

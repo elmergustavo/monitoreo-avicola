@@ -25,7 +25,30 @@ export interface EventMessage {
   };
 }
 
-export type TelemetryMessage = ReadingMessage | EventMessage;
+/** An alert was opened, acknowledged or resolved (sent to every viewer). */
+export interface AlertMessage {
+  type: 'alert';
+  deviceId: string;
+  alert: { id: string; kind: string; severity: string; status: string };
+}
+
+/** A new inbox entry; only its owner receives it. */
+export interface NotificationMessage {
+  type: 'notification';
+  userId: string;
+  notification: {
+    id: string;
+    kind: string;
+    severity: string | null;
+    title: string;
+    body: string;
+    alertId: string | null;
+    deviceId: string | null;
+    createdAt: Date;
+  };
+}
+
+export type TelemetryMessage = ReadingMessage | EventMessage | AlertMessage | NotificationMessage;
 
 /**
  * In-process pub/sub for live updates. Enough for a single API instance;

@@ -3,6 +3,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { toNumber } from '../common/decimal.util.js';
 import type { Device, DeviceSettings } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { DEFAULT_ALERT_RULES } from '../alerts/alert-rules.js';
 import type { UpdateSettingsDto } from '../telemetry/dto/telemetry.dto.js';
 import { generateApiKey, hashApiKey } from './api-key.util.js';
 import type { CreateDeviceDto, UpdateDeviceDto } from './dto/device.dto.js';
@@ -149,6 +150,15 @@ export class DevicesService {
             tempAlert: toNumber(device.settings.tempAlert),
           }
         : DEFAULT_SETTINGS,
+      alertRules: device.settings
+        ? {
+            offlineAfterMin: device.settings.offlineAfterMin,
+            sustainedHeatMin: device.settings.sustainedHeatMin,
+            sustainedColdMin: device.settings.sustainedColdMin,
+            reminderEveryMin: device.settings.reminderEveryMin,
+            escalateAfterMin: device.settings.escalateAfterMin,
+          }
+        : DEFAULT_ALERT_RULES,
       lastReading: lastReading
         ? {
             temperature: toNumber(lastReading.temperature),
