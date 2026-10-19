@@ -7,7 +7,9 @@ import type { EnvironmentVariables } from './config/env.validation.js';
 import { setupSwagger } from './swagger.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // Close keep-alive connections on shutdown too; an open dashboard would
+  // otherwise keep reusing them and the old process would never exit.
+  const app = await NestFactory.create(AppModule, { forceCloseConnections: true });
   const config = app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
   configureApp(app);
