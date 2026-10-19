@@ -162,8 +162,10 @@ Variables de entorno:
 
 **Seed en producción** (una sola vez, desde la terminal del contenedor en Dokploy, con `SEED_DEVICE_API_KEY` definida):
 
-```bash
-npm run seed:prod
+```sh
+cd /app && npm run seed:prod
 ```
+
+La terminal de Dokploy se abre en `/`; la app vive en `/app`.
 
 Si la API usa un dominio con HTTPS, el ESP32 debe usar esa URL (`https://api.midominio.com/api`) y validar el certificado.
