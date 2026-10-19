@@ -37,8 +37,10 @@ npm install
 # 4. Aplicar migraciones
 npm run prisma:deploy        # o `npm run prisma:migrate` si cambias el schema
 
-# 5. Seed: registra el dispositivo "Galpón 1" con su configuración por defecto
+# 5. Seed: crea los roles, el primer administrador (ADMIN_EMAIL) y el dispositivo "Galpón 1"
 npm run prisma:seed
+#    Si ADMIN_PASSWORD está vacío, el seed imprime una contraseña temporal
+#    que se cambia en el primer inicio de sesión.
 
 # 6. Arrancar la API con recarga automática
 npm run start:dev
@@ -98,6 +100,53 @@ npm run test:e2e   # e2e de /api/readings y /api/events (Postgres debe estar en 
 
 Las pruebas e2e crean un dispositivo temporal en la base de datos de `DATABASE_URL` y lo eliminan al terminar (sus lecturas y eventos se borran en cascada).
 
+## Usuarios, roles y permisos
+
+El dashboard usa inicio de sesión con correo y contraseña. No hay registro público: el administrador crea los usuarios, que reciben una **contraseña temporal** y deben cambiarla en su primer ingreso.
+
+- **Access token** (JWT, 15 min) en el header `Authorization: Bearer …`.
+- **Refresh token** en una cookie `httpOnly` (30 días, se renueva en cada uso). Cerrar sesión, desactivar al usuario o cambiar la contraseña invalida las sesiones al instante.
+- Contraseñas con **Argon2id**. El login tiene un límite de 5 intentos por minuto.
+
+| Rol | Permisos |
+| --- | --- |
+| Administrador | Todos (no se puede editar) |
+| Encargado | `telemetry.read`, `settings.manage` |
+| Observador | `telemetry.read` |
+
+Permisos disponibles: `telemetry.read` (ver galpones y datos), `settings.manage` (umbrales), `devices.manage` (registrar galpones y API keys), `users.read`, `users.manage`, `roles.manage`, `audit.read` (bitácora). El administrador puede crear roles propios combinándolos.
+
+### Comandos de administración
+
+Desde `backend/` (local) o desde la terminal del contenedor en Dokploy (`cd /app`):
+
+```bash
+npm run cli -- create-user --email ana@granja.com --name "Ana" --role viewer   # local
+npm run cli:prod -- create-user --email ana@granja.com --name "Ana" --role viewer  # contenedor
+npm run cli:prod -- reset-password --email ana@granja.com
+npm run cli:prod -- list-devices
+npm run cli:prod -- create-device --name "Galpón 2" --shed "Galpón 2"   # imprime la API key del ESP32
+npm run cli:prod -- rotate-device-key --device <id>                      # la key anterior deja de funcionar
+```
+
+### Endpoints del dashboard
+
+| Método y ruta | Permiso |
+| --- | --- |
+| `POST /api/auth/login` · `POST /api/auth/refresh` | Público |
+| `GET /api/auth/me` · `PATCH /api/auth/me/password` · `POST /api/auth/logout` | Sesión |
+| `GET /api/devices` · `GET /api/devices/:id` | `telemetry.read` |
+| `GET /api/devices/:id/readings?from&to` · `/events` · `/summary` | `telemetry.read` |
+| `GET /api/stream` (tiempo real, server-sent events) | `telemetry.read` |
+| `PATCH /api/devices/:id/settings` | `settings.manage` |
+| `POST /api/devices` · `PATCH /api/devices/:id` · `POST /api/devices/:id/rotate-key` | `devices.manage` |
+| `GET /api/users` · `GET /api/roles` | `users.read` |
+| `POST /api/users` · `PATCH /api/users/:id` · `POST /api/users/:id/reset-password` | `users.manage` |
+| `POST/PATCH/DELETE /api/roles` · `GET /api/roles/permissions` | `roles.manage` |
+| `GET /api/audit-logs` | `audit.read` |
+
+La documentación interactiva completa está en `/api/docs`.
+
 ## 3. Ver la base de datos en Adminer
 
 Abre http://localhost:8080 e ingresa:
@@ -154,10 +203,13 @@ Variables de entorno:
 | `NODE_ENV` | No | `production` (por defecto en la imagen) |
 | `HOST` | No | `0.0.0.0` |
 | `PORT` | No | `3000` |
-| `CORS_ORIGINS` | No | `https://dashboard.midominio.com` (separadas por coma; `*` = cualquiera; vacío = CORS desactivado) |
+| `CORS_ORIGINS` | Sí, para el dashboard | `https://lasierra.tavcode.com` (separadas por coma; vacío = CORS desactivado) |
 | `TRUST_PROXY` | No | `true` detrás del proxy de Dokploy (Traefik), para que el rate limit use la IP real |
 | `THROTTLE_TTL_MS` / `THROTTLE_LIMIT` | No | `60000` / `120` |
 | `SWAGGER_ENABLED` | No | `true` (ponlo en `false` si no quieres exponer la documentación) |
+| `JWT_SECRET` | **Sí** | Secreto para firmar sesiones: `openssl rand -base64 48` |
+| `ACCESS_TOKEN_TTL_SECONDS` / `REFRESH_TOKEN_TTL_DAYS` | No | `900` / `30` |
+| `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` | Solo para el seed | Primer administrador. Sin `ADMIN_PASSWORD` se imprime una contraseña temporal |
 | `SEED_DEVICE_API_KEY` | Solo para el seed | Una key distinta a la de desarrollo (`openssl rand -hex 32`) |
 
 **Healthcheck:** `GET /api/health` (200 si la base de datos responde, 503 si no). La imagen ya incluye un `HEALTHCHECK` que lo consulta.

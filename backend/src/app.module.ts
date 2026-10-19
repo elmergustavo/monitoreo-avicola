@@ -2,11 +2,19 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { EnvironmentVariables, validateEnv } from './config/env.validation.js';
+import { AuditModule } from './audit/audit.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
+import { PermissionsGuard } from './auth/permissions.guard.js';
+import { EnvironmentVariables, NodeEnv, validateEnv } from './config/env.validation.js';
+import { DevicesModule } from './devices/devices.module.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReadingsModule } from './readings/readings.module.js';
+import { RolesModule } from './roles/roles.module.js';
+import { TelemetryModule } from './telemetry/telemetry.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
@@ -19,18 +27,33 @@ import { ReadingsModule } from './readings/readings.module.js';
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService<EnvironmentVariables, true>) => [
-        {
-          ttl: config.get('THROTTLE_TTL_MS', { infer: true }),
-          limit: config.get('THROTTLE_LIMIT', { infer: true }),
-        },
-      ],
+      useFactory: (config: ConfigService<EnvironmentVariables, true>) => ({
+        throttlers: [
+          {
+            ttl: config.get('THROTTLE_TTL_MS', { infer: true }),
+            limit: config.get('THROTTLE_LIMIT', { infer: true }),
+          },
+        ],
+        // Automated tests log in many times from the same address.
+        skipIf: () => config.get('NODE_ENV', { infer: true }) === NodeEnv.Test,
+      }),
     }),
     PrismaModule,
+    AuditModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    DevicesModule,
+    TelemetryModule,
     HealthModule,
     ReadingsModule,
     EventsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  // Guards run in this order: rate limit, user authentication, permissions.
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+  ],
 })
 export class AppModule {}

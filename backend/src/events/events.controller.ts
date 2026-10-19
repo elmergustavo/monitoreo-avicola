@@ -7,6 +7,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Public } from '../auth/decorators.js';
 import type { Device } from '../generated/prisma/client.js';
 import { ApiKeyGuard } from '../devices/api-key.guard.js';
 import { API_KEY_SECURITY_NAME } from '../devices/api-key.util.js';
@@ -17,6 +18,7 @@ import { EventsService } from './events.service.js';
 
 @ApiTags('events')
 @ApiSecurity(API_KEY_SECURITY_NAME)
+@Public() // devices authenticate with x-api-key, not a user token
 @UseGuards(ApiKeyGuard)
 @Controller('events')
 export class EventsController {

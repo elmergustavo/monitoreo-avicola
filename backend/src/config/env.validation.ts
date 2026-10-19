@@ -8,6 +8,7 @@ import {
   IsString,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -60,6 +61,24 @@ export class EnvironmentVariables {
   @Transform(toBoolean)
   @IsBoolean()
   SWAGGER_ENABLED = true;
+
+  /** Secret used to sign access tokens (HS256). At least 32 characters. */
+  @IsString()
+  @MinLength(32)
+  JWT_SECRET: string;
+
+  /** Access token lifetime in seconds (default 15 minutes). */
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(60)
+  ACCESS_TOKEN_TTL_SECONDS = 900;
+
+  /** Refresh token (session) lifetime in days. */
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  REFRESH_TOKEN_TTL_DAYS = 30;
 }
 
 /**

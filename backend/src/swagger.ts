@@ -12,6 +12,12 @@ export function setupSwagger(app: INestApplication): void {
         'Temperature and irrigation monitoring for Granjas Avícolas La Sierra poultry houses.',
       )
       .setVersion('1.0.0')
+      .addBearerAuth({
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Dashboard user access token',
+      })
       .addApiKey(
         {
           type: 'apiKey',
