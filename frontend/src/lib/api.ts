@@ -18,7 +18,14 @@ export class ApiError extends Error {
 }
 
 let accessToken: string | null = null;
-let refreshInFlight: Promise<string | null> | null = null;
+/**
+ * Result of renewing the session. "offline" means the server could not be
+ * reached or failed temporarily: the session may still be valid, so the user
+ * must not be signed out for it.
+ */
+export type RefreshResult = { status: 'ok'; token: string } | { status: 'expired' } | { status: 'offline' };
+
+let refreshInFlight: Promise<RefreshResult> | null = null;
 let onSessionExpired: (() => void) | null = null;
 
 export const getAccessToken = () => accessToken;
@@ -29,13 +36,15 @@ export const setSessionExpiredHandler = (handler: () => void) => {
   onSessionExpired = handler;
 };
 
-async function requestRefresh(): Promise<string | null> {
+async function requestRefresh(): Promise<RefreshResult> {
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
-    if (!response.ok) return null;
-    return ((await response.json()) as { accessToken: string }).accessToken;
+    if (response.status === 401 || response.status === 403) return { status: 'expired' };
+    // 5xx, 429 or a proxy error page while the API restarts: try again later.
+    if (!response.ok) return { status: 'offline' };
+    return { status: 'ok', token: ((await response.json()) as { accessToken: string }).accessToken };
   } catch {
-    return null;
+    return { status: 'offline' };
   }
 }
 
@@ -45,20 +54,27 @@ async function requestRefresh(): Promise<string | null> {
  * refresh token rotates on every use, so two tabs refreshing at the same
  * time with the same cookie would sign one of them out.
  */
-export function refreshAccessToken(): Promise<string | null> {
+export function refreshSession(): Promise<RefreshResult> {
   refreshInFlight ??= (
     typeof navigator !== 'undefined' && 'locks' in navigator
       ? navigator.locks.request('auth-refresh', requestRefresh)
       : requestRefresh()
   )
-    .then((token) => {
-      accessToken = token;
-      return token;
+    .then((result) => {
+      if (result.status === 'ok') accessToken = result.token;
+      if (result.status === 'expired') accessToken = null;
+      return result;
     })
     .finally(() => {
       refreshInFlight = null;
     });
   return refreshInFlight;
+}
+
+/** The new access token, or null if the session expired or the server is unreachable. */
+export async function refreshAccessToken(): Promise<string | null> {
+  const result = await refreshSession();
+  return result.status === 'ok' ? result.token : null;
 }
 
 interface RequestOptions {
@@ -96,10 +112,13 @@ async function send(path: string, options: RequestOptions, accept?: string): Pro
   }
 
   if (response.status === 401 && !options.skipAuthRetry) {
-    if (await refreshAccessToken()) {
+    const refreshed = await refreshSession();
+    if (refreshed.status === 'ok') {
       response = await attempt();
-    } else {
+    } else if (refreshed.status === 'expired') {
       onSessionExpired?.();
+    } else {
+      throw new ApiError(0, 'No se pudo conectar con el servidor. Revisa tu conexión.');
     }
   }
 

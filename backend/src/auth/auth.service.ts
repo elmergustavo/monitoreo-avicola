@@ -23,6 +23,9 @@ export interface IssuedTokens {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** How long a replaced refresh token is still accepted. */
+const REFRESH_GRACE_MS = 2 * 60_000;
+
 @Injectable()
 export class AuthService {
   /** Verified when the email does not exist, so both paths take the same time. */
@@ -73,10 +76,19 @@ export class AuthService {
     };
   }
 
-  /** Rotates the refresh token: the old one stops working immediately. */
+  /**
+   * Rotates the refresh token. The replaced token keeps working for a short
+   * grace period: if the response with the new token is lost (page reload,
+   * weak mobile signal), the browser still holds the old one and must not be
+   * signed out for it.
+   */
   async refresh(refreshToken: string): Promise<IssuedTokens> {
-    const session = await this.prisma.session.findUnique({
-      where: { tokenHash: sha256(refreshToken) },
+    const hash = sha256(refreshToken);
+    const graceStart = new Date(Date.now() - REFRESH_GRACE_MS);
+    const session = await this.prisma.session.findFirst({
+      where: {
+        OR: [{ tokenHash: hash }, { previousTokenHash: hash, rotatedAt: { gt: graceStart } }],
+      },
       include: { user: true },
     });
     if (!session || session.revokedAt || session.expiresAt <= new Date() || !session.user.active) {
@@ -85,12 +97,15 @@ export class AuthService {
 
     const nextToken = generateSecret();
     const refreshTokenExpiresAt = new Date(Date.now() + this.refreshTtlDays() * DAY_MS);
+    const now = new Date();
     await this.prisma.session.update({
       where: { id: session.id },
       data: {
         tokenHash: sha256(nextToken),
+        previousTokenHash: session.tokenHash,
+        rotatedAt: now,
         expiresAt: refreshTokenExpiresAt,
-        lastUsedAt: new Date(),
+        lastUsedAt: now,
       },
     });
 

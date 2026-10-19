@@ -10,6 +10,7 @@ export function RequireAuth() {
   const location = useLocation();
 
   if (status === 'loading') return <FullPageLoader />;
+  if (status === 'reconnecting') return <FullPageLoader message="Sin conexión con el servidor. Reintentando…" />;
   if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user?.mustChangePassword && location.pathname !== '/cambiar-contrasena') {
     return <Navigate to="/cambiar-contrasena" replace />;

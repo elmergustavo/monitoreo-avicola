@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react';
 import type { CurrentUser, Permission } from '@/lib/types';
 
-export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
+/** 'reconnecting': the session could not be checked because the server is unreachable. */
+export type AuthStatus = 'loading' | 'reconnecting' | 'authenticated' | 'anonymous';
 
 export interface AuthContextValue {
   status: AuthStatus;

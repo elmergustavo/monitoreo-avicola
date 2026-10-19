@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, refreshAccessToken, setAccessToken, setSessionExpiredHandler } from '@/lib/api';
+import { api, ApiError, refreshSession, setAccessToken, setSessionExpiredHandler } from '@/lib/api';
 import type { CurrentUser, Permission } from '@/lib/types';
 import { AuthContext, type AuthContextValue, type AuthStatus } from './auth-context';
 
@@ -20,25 +20,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(await api<CurrentUser>('/auth/me'));
   }, []);
 
-  // Restore the session from the refresh cookie on first load.
+  // Restore the session from the refresh cookie on first load. If the server
+  // cannot be reached (no internet, API restarting), keep retrying instead of
+  // signing the user out: their session is probably still valid.
   useEffect(() => {
     setSessionExpiredHandler(clearSession);
     let cancelled = false;
     void (async () => {
-      const token = await refreshAccessToken();
-      if (cancelled) return;
-      if (!token) {
-        setStatus('anonymous');
-        return;
-      }
-      try {
-        const me = await api<CurrentUser>('/auth/me');
-        if (!cancelled) {
-          setUser(me);
-          setStatus('authenticated');
+      for (let attempt = 0; !cancelled; attempt++) {
+        const refreshed = await refreshSession();
+        if (cancelled) return;
+        if (refreshed.status === 'expired') {
+          setStatus('anonymous');
+          return;
         }
-      } catch {
-        if (!cancelled) clearSession();
+        if (refreshed.status === 'ok') {
+          try {
+            const me = await api<CurrentUser>('/auth/me');
+            if (cancelled) return;
+            setUser(me);
+            setStatus('authenticated');
+            return;
+          } catch (err) {
+            const temporary = err instanceof ApiError && (err.status === 0 || err.status >= 500);
+            if (!temporary) {
+              if (!cancelled) clearSession();
+              return;
+            }
+          }
+        }
+        setStatus('reconnecting');
+        await new Promise((resolve) => setTimeout(resolve, Math.min(10_000, 1_000 * 2 ** attempt)));
       }
     })();
     return () => {

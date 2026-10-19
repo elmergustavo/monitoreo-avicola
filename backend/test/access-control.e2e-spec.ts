@@ -121,11 +121,45 @@ describe('Access control (e2e)', () => {
       });
     });
 
-    it('rotates the refresh token: the previous cookie stops working', async () => {
-      const { cookie } = await login(email('viewer'));
-      const refreshed = await http().post('/api/auth/refresh').set('Cookie', cookie).expect(200);
+    const cookieFrom = (response: request.Response) =>
+      ([] as string[])
+        .concat(response.headers['set-cookie'] ?? [])
+        .find((c) => c.startsWith('refresh_token='))!
+        .split(';')[0];
+
+    it('rotates the refresh token on every use', async () => {
+      const { cookie: first } = await login(email('viewer'));
+      const refreshed = await http().post('/api/auth/refresh').set('Cookie', first).expect(200);
+      const second = cookieFrom(refreshed);
+      expect(second).not.toBe(first);
       await http().get('/api/devices').set(bearer(refreshed.body.accessToken)).expect(200);
-      await http().post('/api/auth/refresh').set('Cookie', cookie).expect(401);
+      await http().post('/api/auth/refresh').set('Cookie', second).expect(200);
+    });
+
+    it('accepts the replaced token briefly, in case the new cookie never reached the browser', async () => {
+      const { cookie: first } = await login(email('viewer'));
+      const lost = await http().post('/api/auth/refresh').set('Cookie', first).expect(200);
+      // The browser never stored the new cookie and retries with the old one.
+      const recovered = await http().post('/api/auth/refresh').set('Cookie', first).expect(200);
+      await http().get('/api/devices').set(bearer(recovered.body.accessToken)).expect(200);
+      // Only the token replaced last is accepted: the first one is now gone.
+      await http().post('/api/auth/refresh').set('Cookie', first).expect(401);
+      expect(cookieFrom(recovered)).not.toBe(cookieFrom(lost));
+    });
+
+    it('rejects the replaced token once the grace period is over', async () => {
+      const { cookie: first } = await login(email('viewer'));
+      const refreshed = await http().post('/api/auth/refresh').set('Cookie', first).expect(200);
+      const session = await prisma.session.findFirstOrThrow({
+        where: { user: { email: email('viewer') } },
+        orderBy: { lastUsedAt: 'desc' },
+      });
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { rotatedAt: new Date(Date.now() - 3 * 60_000) },
+      });
+      await http().post('/api/auth/refresh').set('Cookie', first).expect(401);
+      await http().post('/api/auth/refresh').set('Cookie', cookieFrom(refreshed)).expect(200);
     });
 
     it('logout revokes the session immediately', async () => {
