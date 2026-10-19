@@ -1,12 +1,52 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
-import type { AlertView, NotificationItem } from '@/lib/types';
+import type { AlertKind, AlertRules, AlertSeverity, AlertStats, AlertView, Device, NotificationItem } from '@/lib/types';
+import { queryKeys } from '@/features/monitoring/queries';
 
 export const alertKeys = {
   all: ['alerts'] as const,
   active: ['alerts', 'active'] as const,
+  history: (filters: AlertFilters) => ['alerts', 'history', filters] as const,
+  stats: (days: number, deviceId?: string) => ['alerts', 'stats', days, deviceId ?? 'all'] as const,
 };
+
+export interface AlertFilters {
+  status?: 'active' | 'resolved';
+  deviceId?: string;
+  kind?: AlertKind;
+  severity?: AlertSeverity;
+}
+
+const HISTORY_PAGE = 30;
+
+/** Alert history, newest first, paged by opening time. */
+export function useAlertHistory(filters: AlertFilters) {
+  return useInfiniteQuery({
+    queryKey: alertKeys.history(filters),
+    queryFn: ({ pageParam }) =>
+      api<AlertView[]>('/alerts', { query: { ...filters, limit: HISTORY_PAGE, before: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => (last.length === HISTORY_PAGE ? last.at(-1)?.openedAt : undefined),
+  });
+}
+
+export function useAlertStats(days: number, deviceId?: string) {
+  return useQuery({
+    queryKey: alertKeys.stats(days, deviceId),
+    queryFn: () => api<AlertStats>('/alerts/stats', { query: { days, deviceId } }),
+  });
+}
+
+export function useUpdateAlertRules(deviceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rules: AlertRules) => api<Device>(`/devices/${deviceId}/alert-rules`, { method: 'PATCH', body: rules }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Device[]>(queryKeys.devices, (old) => old?.map((d) => (d.id === updated.id ? updated : d)));
+    },
+  });
+}
 
 export const notificationKeys = {
   all: ['notifications'] as const,

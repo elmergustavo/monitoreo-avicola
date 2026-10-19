@@ -18,7 +18,7 @@ import { CurrentUser, RequirePermissions } from '../auth/decorators.js';
 import { DevicesService } from '../devices/devices.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AlertsService } from './alerts.service.js';
-import { AlertsQueryDto, UpdateAlertRulesDto } from './dto/alerts.dto.js';
+import { AlertStatsQueryDto, AlertsQueryDto, UpdateAlertRulesDto } from './dto/alerts.dto.js';
 
 @ApiTags('alerts')
 @ApiBearerAuth()
@@ -38,9 +38,18 @@ export class AlertsController {
     return this.alerts.list({
       status: query.status,
       deviceId: query.deviceId,
+      kind: query.kind,
+      severity: query.severity,
       before: query.before ? new Date(query.before) : undefined,
       limit: query.limit ?? 50,
     });
+  }
+
+  @Get('alerts/stats')
+  @RequirePermissions('telemetry.read')
+  @ApiOperation({ summary: 'Counts and response times of the last N days' })
+  stats(@Query() query: AlertStatsQueryDto) {
+    return this.alerts.stats({ days: query.days ?? 30, deviceId: query.deviceId });
   }
 
   @Get('alerts/:id')

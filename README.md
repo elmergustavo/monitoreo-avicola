@@ -146,7 +146,7 @@ npm run cli:prod -- rotate-device-key --device <id>                      # la ke
 | `POST /api/users` · `PATCH /api/users/:id` · `POST /api/users/:id/reset-password` | `users.manage` |
 | `POST/PATCH/DELETE /api/roles` · `GET /api/roles/permissions` | `roles.manage` |
 | `GET /api/reports/operations?format=pdf\|xlsx&from&to&deviceId` · `GET /api/reports/recent` | `reports.export` |
-| `GET /api/alerts?status=active` · `GET /api/alerts/:id` · `POST /api/alerts/:id/acknowledge` | `telemetry.read` |
+| `GET /api/alerts?status&deviceId&kind&severity&before` · `GET /api/alerts/stats?days&deviceId` · `GET /api/alerts/:id` · `POST /api/alerts/:id/acknowledge` | `telemetry.read` |
 | `POST /api/alerts/:id/resolve` · `PATCH /api/devices/:id/alert-rules` | `alerts.manage` |
 | `GET /api/notifications` · `/unread-count` · `POST /api/notifications/:id/read` · `/read-all` | Sesión |
 | `GET /api/audit-logs` | `audit.read` |
@@ -177,8 +177,9 @@ Cada problema se convierte en una **alerta** (un incidente) que se abre una sola
 
 - **"Lo atiendo"** registra quién se hace cargo y detiene recordatorios y escalamiento.
 - **Recordatorios** cada 30 min mientras nadie la atiende (máx. 4). **Escalamiento** a quienes tienen `alerts.manage` si una crítica no se atiende en 15 min.
-- Tiempos por galpón (`PATCH /api/devices/:id/alert-rules`): sin conexión 5 min, calor sostenido 10 min, frío sostenido 30 min, recordatorio 30 min, escalamiento 15 min.
+- Tiempos por galpón (botón **Tiempos de alerta** en cada galpón, o `PATCH /api/devices/:id/alert-rules`): sin conexión 5 min, calor sostenido 10 min, frío sostenido 30 min, recordatorio 30 min, escalamiento 15 min.
 - En el dashboard: campana con contador, panel de alertas activas y notificaciones, avisos en vivo y aviso fijo en el resumen y en cada galpón.
+- Página **Alertas** (`/alertas`): resumen de 7/30/90 días (cantidad, tiempo de respuesta, duración, escaladas, por tipo) e historial agrupado por día con quién la atendió, cuánto duró y cómo se cerró. Los filtros quedan en la URL para compartir la vista.
 - Próximos canales: Telegram y WhatsApp (Twilio).
 
 ## 3. Ver la base de datos en Adminer

@@ -56,3 +56,17 @@ export function formatAgo(at: number, now = Date.now()): string {
   if (minutes < 60) return `hace ${minutes} min`;
   return `hace ${Math.round(minutes / 60)} h`;
 }
+
+/** "45 min", "2 h 10 min", "1 d 4 h". */
+export function formatDuration(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  if (total < 1) return '< 1 min';
+  if (total < 60) return `${total} min`;
+  const hours = Math.floor(total / 60);
+  if (hours < 24) return total % 60 === 0 ? `${hours} h` : `${hours} h ${total % 60} min`;
+  const days = Math.floor(hours / 24);
+  return hours % 24 === 0 ? `${days} d` : `${days} d ${hours % 24} h`;
+}
+
+/** "a los 12 min", or "de inmediato" under a minute. */
+export const formatAfter = (minutes: number): string => (minutes < 0.5 ? 'de inmediato' : `a los ${formatDuration(minutes)}`);

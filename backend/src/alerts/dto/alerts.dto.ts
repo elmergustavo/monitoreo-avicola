@@ -2,6 +2,16 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsISO8601, IsOptional, IsUUID, Max, Min } from 'class-validator';
 
+export const ALERT_KINDS = [
+  'heat_no_irrigation',
+  'prolonged_irrigation',
+  'sensor_error',
+  'device_offline',
+  'sustained_heat',
+  'sustained_cold',
+] as const;
+export type AlertKindParam = (typeof ALERT_KINDS)[number];
+
 export class AlertsQueryDto {
   @ApiPropertyOptional({ enum: ['active', 'resolved'], description: 'Omit it for every alert' })
   @IsOptional()
@@ -12,6 +22,16 @@ export class AlertsQueryDto {
   @IsOptional()
   @IsUUID()
   deviceId?: string;
+
+  @ApiPropertyOptional({ enum: ALERT_KINDS })
+  @IsOptional()
+  @IsIn(ALERT_KINDS)
+  kind?: AlertKindParam;
+
+  @ApiPropertyOptional({ enum: ['critical', 'warning'] })
+  @IsOptional()
+  @IsIn(['critical', 'warning'])
+  severity?: 'critical' | 'warning';
 
   @ApiPropertyOptional({ description: 'Alerts opened before this date (pagination cursor)' })
   @IsOptional()
@@ -25,6 +45,21 @@ export class AlertsQueryDto {
   @Min(1)
   @Max(200)
   limit?: number;
+}
+
+export class AlertStatsQueryDto {
+  @ApiPropertyOptional({ default: 30, maximum: 365, description: 'Days back from now' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  days?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  deviceId?: string;
 }
 
 export class UpdateAlertRulesDto {

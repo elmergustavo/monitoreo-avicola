@@ -1,4 +1,4 @@
-import { ClipboardList, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
+import { BellRing, ClipboardList, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { BrandMark } from '@/components/brand-mark';
@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { NotificationCenter } from '@/features/alerts/notification-center';
+import { useActiveAlerts } from '@/features/alerts/queries';
 import { useAuth } from '@/features/auth/auth-context';
 import { LiveProvider } from '@/features/monitoring/live-provider';
 import { useDevices } from '@/features/monitoring/queries';
@@ -81,6 +82,8 @@ function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const location = useLocation();
   const devices = useDevices();
+  const activeAlerts = useActiveAlerts(can('telemetry.read'));
+  const pendingAlerts = activeAlerts.data?.filter((a) => a.status === 'open').length ?? 0;
 
   // Close the mobile drawer after navigating.
   useEffect(() => setOpenMobile(false), [location.pathname, setOpenMobile]);
@@ -116,6 +119,7 @@ function AppSidebar() {
                           online={device.online}
                         />
                       ))}
+                    <NavMenuItem item={{ to: '/alertas', label: 'Alertas', icon: BellRing }} count={pendingAlerts} />
                   </>
                 )}
                 {can('reports.export') && <NavMenuItem item={{ to: '/reportes', label: 'Reportes', icon: FileText }} />}
@@ -145,7 +149,7 @@ function AppSidebar() {
   );
 }
 
-function NavMenuItem({ item, online }: { item: NavItem; online?: boolean }) {
+function NavMenuItem({ item, online, count }: { item: NavItem; online?: boolean; count?: number }) {
   const location = useLocation();
   const active = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to);
   const Icon = item.icon;
@@ -160,6 +164,12 @@ function NavMenuItem({ item, online }: { item: NavItem; online?: boolean }) {
               className={`ml-auto size-2 shrink-0 rounded-full ${online ? 'bg-optimal' : 'bg-muted-foreground/40'}`}
               aria-label={online ? 'En línea' : 'Desconectado'}
             />
+          )}
+          {count !== undefined && count > 0 && (
+            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1.5 text-[11px] font-semibold text-white tabular">
+              {count > 9 ? '9+' : count}
+              <span className="sr-only"> sin atender</span>
+            </span>
           )}
         </NavLink>
       </SidebarMenuButton>

@@ -1,6 +1,6 @@
-import { Bell, BellOff, CheckCheck, CircleCheck } from 'lucide-react';
+import { ArrowRight, Bell, BellOff, CheckCheck, CircleCheck } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -77,6 +77,11 @@ export function NotificationCenter() {
                   Todo en orden: no hay alertas abiertas.
                 </p>
               )}
+              <Button asChild variant="link" className="mt-2 h-9 px-0">
+                <Link to="/alertas" onClick={() => setOpen(false)}>
+                  Ver historial de alertas <ArrowRight aria-hidden="true" />
+                </Link>
+              </Button>
             </section>
           )}
           <RecentNotifications enabled={open} onNavigate={() => setOpen(false)} />

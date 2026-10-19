@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import { AppShell } from '@/components/app-shell';
 import { NoAccess } from '@/components/no-access';
+import { AlertsPage } from '@/features/alerts/alerts-page';
 import { AuditPage } from '@/features/audit/audit-page';
 import { ChangePasswordPage } from '@/features/auth/change-password-page';
 import { LoginPage } from '@/features/auth/login-page';
@@ -25,7 +26,10 @@ export const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           {
             element: <RequirePermission permission="telemetry.read" />,
-            children: [{ path: '/galpones/:id', element: <ShedPage /> }],
+            children: [
+              { path: '/galpones/:id', element: <ShedPage /> },
+              { path: '/alertas', element: <AlertsPage /> },
+            ],
           },
           {
             element: <RequirePermission permission="reports.export" />,

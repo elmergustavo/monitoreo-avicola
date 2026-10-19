@@ -10,6 +10,16 @@ export const ALERT_ICONS: Record<AlertKind, LucideIcon> = {
   device_offline: CloudOff,
 };
 
+/** Same wording as the API (alert-messages.ts). */
+export const ALERT_LABELS: Record<AlertKind, string> = {
+  heat_no_irrigation: 'Calor sin riego',
+  sustained_heat: 'Calor sostenido',
+  sustained_cold: 'Frío sostenido',
+  prolonged_irrigation: 'Riego prolongado',
+  sensor_error: 'Error del sensor',
+  device_offline: 'Galpón sin conexión',
+};
+
 /** Surface + text colors per severity (theme tokens, works in light and dark). */
 export const SEVERITY_TONE: Record<AlertSeverity, { surface: string; icon: string; label: string }> = {
   critical: { surface: 'border-alert/35 bg-alert/[0.07]', icon: 'bg-alert/15 text-alert', label: 'Crítica' },

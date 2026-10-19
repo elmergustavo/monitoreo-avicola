@@ -251,6 +251,47 @@ describe('Alerts and notifications (e2e)', () => {
     expect(none.body.count).toBe(0);
   });
 
+  it('filters the history and summarizes response times', async () => {
+    const resolvedHeat = await http()
+      .get('/api/alerts')
+      .query({ deviceId, status: 'resolved', kind: 'heat_no_irrigation' })
+      .set(bearer(watcher.token))
+      .expect(200);
+    expect(resolvedHeat.body).toHaveLength(1);
+    expect(resolvedHeat.body[0].acknowledgedBy).toMatchObject({ id: watcher.id });
+
+    const warnings = await http()
+      .get('/api/alerts')
+      .query({ deviceId, severity: 'warning' })
+      .set(bearer(watcher.token))
+      .expect(200);
+    expect(warnings.body).toHaveLength(0);
+
+    await http().get('/api/alerts').query({ kind: 'nope' }).set(bearer(watcher.token)).expect(400);
+
+    const stats = await http()
+      .get('/api/alerts/stats')
+      .query({ deviceId, days: 7 })
+      .set(bearer(watcher.token))
+      .expect(200);
+    // Whatever the earlier tests left on this device, the counts must match the table.
+    const all = await alertsOf();
+    expect(all.length).toBeGreaterThanOrEqual(3);
+    expect(stats.body).toMatchObject({
+      days: 7,
+      total: all.length,
+      critical: all.filter((a) => a.severity === 'critical').length,
+      unresolved: all.filter((a) => a.status !== 'resolved').length,
+      escalated: all.filter((a) => a.escalatedAt !== null).length,
+      acknowledged: 1,
+    });
+    expect(stats.body.avgResponseMin).toEqual(expect.any(Number));
+    expect(stats.body.avgDurationMin).toEqual(expect.any(Number));
+    expect(stats.body.byKind.map((k: { label: string }) => k.label)).toEqual(
+      expect.arrayContaining(['Calor sin riego', 'Error del sensor']),
+    );
+  });
+
   it('lets alert managers tune the timings of a shed', async () => {
     await http()
       .patch(`/api/devices/${deviceId}/alert-rules`)

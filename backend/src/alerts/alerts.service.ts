@@ -174,6 +174,8 @@ export class AlertsService {
   async list(params: {
     status?: 'active' | 'resolved';
     deviceId?: string;
+    kind?: AlertKind;
+    severity?: 'critical' | 'warning';
     before?: Date;
     limit: number;
   }) {
@@ -186,6 +188,8 @@ export class AlertsService {
               ? 'resolved'
               : undefined,
         deviceId: params.deviceId,
+        kind: params.kind,
+        severity: params.severity,
         openedAt: params.before ? { lt: params.before } : undefined,
       },
       include: alertInclude,
@@ -193,6 +197,56 @@ export class AlertsService {
       take: params.limit,
     });
     return alerts.map((alert) => this.toView(alert));
+  }
+
+  /**
+   * Counts and response times of the alerts opened in the last `days` days.
+   * Times are in minutes; null when there is nothing to average.
+   */
+  async stats(params: { days: number; deviceId?: string }) {
+    const since = new Date(Date.now() - params.days * 24 * 60 * 60_000);
+    const alerts = await this.prisma.alert.findMany({
+      where: { openedAt: { gte: since }, deviceId: params.deviceId },
+      select: {
+        kind: true,
+        severity: true,
+        status: true,
+        openedAt: true,
+        acknowledgedAt: true,
+        resolvedAt: true,
+        escalatedAt: true,
+      },
+    });
+
+    const minutesBetween = (from: Date, to: Date) => (to.getTime() - from.getTime()) / 60_000;
+    const average = (values: number[]) =>
+      values.length === 0
+        ? null
+        : Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10;
+
+    const byKind = new Map<AlertKind, number>();
+    for (const alert of alerts) byKind.set(alert.kind, (byKind.get(alert.kind) ?? 0) + 1);
+
+    return {
+      days: params.days,
+      since,
+      total: alerts.length,
+      critical: alerts.filter((a) => a.severity === 'critical').length,
+      unresolved: alerts.filter((a) => a.status !== 'resolved').length,
+      escalated: alerts.filter((a) => a.escalatedAt !== null).length,
+      acknowledged: alerts.filter((a) => a.acknowledgedAt !== null).length,
+      avgResponseMin: average(
+        alerts.flatMap((a) =>
+          a.acknowledgedAt ? [minutesBetween(a.openedAt, a.acknowledgedAt)] : [],
+        ),
+      ),
+      avgDurationMin: average(
+        alerts.flatMap((a) => (a.resolvedAt ? [minutesBetween(a.openedAt, a.resolvedAt)] : [])),
+      ),
+      byKind: [...byKind.entries()]
+        .map(([kind, count]) => ({ kind, label: ALERT_LABELS[kind], count }))
+        .sort((a, b) => b.count - a.count),
+    };
   }
 
   async findOne(id: string) {

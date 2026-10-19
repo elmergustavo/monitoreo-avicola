@@ -51,6 +51,15 @@ export interface Settings {
   tempAlert: number;
 }
 
+/** Alert timings of a shed, in minutes. */
+export interface AlertRules {
+  offlineAfterMin: number;
+  sustainedHeatMin: number;
+  sustainedColdMin: number;
+  reminderEveryMin: number;
+  escalateAfterMin: number;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -60,6 +69,7 @@ export interface Device {
   createdAt: string;
   lastSeenAt: string | null;
   settings: Settings;
+  alertRules: AlertRules;
   lastReading: { temperature: number; humidity: number | null; irrigation: boolean; createdAt: string } | null;
 }
 
@@ -158,6 +168,19 @@ export interface AlertView {
   resolution: string | null;
   reminderCount: number;
   escalatedAt: string | null;
+}
+
+export interface AlertStats {
+  days: number;
+  since: string;
+  total: number;
+  critical: number;
+  unresolved: number;
+  escalated: number;
+  acknowledged: number;
+  avgResponseMin: number | null;
+  avgDurationMin: number | null;
+  byKind: { kind: AlertKind; label: string; count: number }[];
 }
 
 export type NotificationKind =

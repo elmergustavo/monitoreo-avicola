@@ -3,6 +3,7 @@ import { DataFreshness } from '@/components/data-freshness';
 import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActiveAlertsBanner } from '@/features/alerts/active-alerts-banner';
+import { AlertRulesDialog } from '@/features/alerts/alert-rules-dialog';
 import { useAuth } from '@/features/auth/auth-context';
 import { DaySummary } from './components/day-summary';
 import { EventFeed } from './components/event-feed';
@@ -41,7 +42,14 @@ export function ShedPage() {
             <DataFreshness at={lastAt} />
           </span>
         }
-        actions={can('settings.manage') ? <SettingsDialog device={device} /> : undefined}
+        actions={
+          can('settings.manage') || can('alerts.manage') ? (
+            <>
+              {can('settings.manage') && <SettingsDialog device={device} />}
+              {can('alerts.manage') && <AlertRulesDialog device={device} />}
+            </>
+          ) : undefined
+        }
       />
 
       <ActiveAlertsBanner deviceId={device.id} />
