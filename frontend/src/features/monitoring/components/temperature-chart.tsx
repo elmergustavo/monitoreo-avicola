@@ -6,6 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cssVarToRgba } from '@/lib/css-color';
 import { formatDayLabel, formatShortDay, formatTemp, formatTime } from '@/lib/format';
 import { classifyTemperature, THERMAL_LABEL } from '@/lib/thermal';
+import { useReadingsRange } from '../queries';
 import { irrigationSpans } from '../stats';
 import type { Reading, ShedSettings } from '../types';
 
@@ -15,15 +16,21 @@ const RANGES = {
   '7d': { label: '7 días', ms: 7 * 24 * 3_600_000 },
 } as const;
 type RangeKey = keyof typeof RANGES;
+const NO_READINGS: Reading[] = [];
 
 interface TemperatureChartProps {
+  deviceId: string;
+  /** Last 24 h of raw readings (live). Longer ranges are fetched averaged. */
   readings: Reading[];
   settings: ShedSettings;
 }
 
-export function TemperatureChart({ readings, settings }: TemperatureChartProps) {
+export function TemperatureChart({ deviceId, readings: last24h, settings }: TemperatureChartProps) {
   const [range, setRange] = useState<RangeKey>('24h');
   const { theme } = useTheme();
+  const weekQuery = useReadingsRange(deviceId, 7, range === '7d');
+  const readings = range === '7d' ? (weekQuery.data ?? NO_READINGS) : last24h;
+  const loading = range === '7d' && weekQuery.isPending;
 
   const colors = useMemo(
     () => ({
@@ -44,7 +51,7 @@ export function TemperatureChart({ readings, settings }: TemperatureChartProps) 
   );
 
   const option = useMemo<EChartOption>(() => {
-    const now = readings.at(-1)?.at ?? 0;
+    const now = Math.max(readings.at(-1)?.at ?? 0, last24h.at(-1)?.at ?? 0);
     const visible = readings.filter((r) => r.at >= now - RANGES[range].ms);
     const spans = irrigationSpans(visible);
     const { tempMin, tempMax, tempAlert } = settings;
@@ -155,7 +162,7 @@ export function TemperatureChart({ readings, settings }: TemperatureChartProps) 
         },
       ],
     };
-  }, [readings, range, settings, colors]);
+  }, [readings, last24h, range, settings, colors]);
 
   return (
     <Panel className="flex flex-col">
@@ -180,12 +187,24 @@ export function TemperatureChart({ readings, settings }: TemperatureChartProps) 
         Temperatura
       </PanelTitle>
 
-      <EChart
-        option={option}
-        resetKey={`${range}-${theme}`}
-        className="min-h-72 flex-1 sm:min-h-80"
-        ariaLabel={`Gráfica de temperatura de las últimas ${RANGES[range].label}`}
-      />
+      <div className="relative flex min-h-72 flex-1 sm:min-h-80">
+        <EChart
+          option={option}
+          resetKey={`${range}-${theme}`}
+          className="min-h-72 flex-1 sm:min-h-80"
+          ariaLabel={`Gráfica de temperatura de las últimas ${RANGES[range].label}`}
+        />
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-card/70 text-sm text-muted-foreground">
+            Cargando 7 días…
+          </div>
+        )}
+        {!loading && readings.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+            Sin lecturas en este rango.
+          </div>
+        )}
+      </div>
 
       <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
         <Legend swatch="h-2.5 w-4 rounded-sm bg-optimal/25" label="Rango óptimo" />

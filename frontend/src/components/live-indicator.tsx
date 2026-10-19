@@ -1,34 +1,24 @@
-import { useEffect, useState } from 'react';
-import { formatAgo } from '@/lib/format';
+import { useLiveStatus } from '@/features/monitoring/live-context';
 import { cn } from '@/lib/utils';
 
-/** Data older than this is flagged as stale (the ESP32 reports every 30 s). */
-const STALE_AFTER_MS = 90_000;
+const LABEL = {
+  open: 'En vivo',
+  connecting: 'Conectando…',
+  reconnecting: 'Reconectando…',
+  off: 'Sin conexión',
+} as const;
 
-export function LiveIndicator({ lastUpdate }: { lastUpdate: number | null }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const stale = lastUpdate === null || now - lastUpdate > STALE_AFTER_MS;
-
+/** Connection state of the real-time channel. */
+export function LiveIndicator() {
+  const { status } = useLiveStatus();
+  const live = status === 'open';
   return (
-    <div className="flex items-center gap-2.5 text-sm">
+    <div className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
       <span className="relative flex size-2.5" aria-hidden="true">
-        {!stale && (
-          <span className="absolute inline-flex size-full rounded-full bg-optimal opacity-60 motion-safe:animate-ping" />
-        )}
-        <span className={cn('relative inline-flex size-2.5 rounded-full', stale ? 'bg-warm' : 'bg-optimal')} />
+        {live && <span className="absolute inline-flex size-full rounded-full bg-optimal opacity-60 motion-safe:animate-ping" />}
+        <span className={cn('relative inline-flex size-2.5 rounded-full', live ? 'bg-optimal' : 'bg-warm')} />
       </span>
-      <span className="font-medium">{stale ? 'Sin datos recientes' : 'En vivo'}</span>
-      {lastUpdate !== null && (
-        <span className="hidden font-mono text-xs text-muted-foreground tabular sm:inline">
-          {formatAgo(lastUpdate, now)}
-        </span>
-      )}
+      <span className="font-medium">{LABEL[status]}</span>
     </div>
   );
 }

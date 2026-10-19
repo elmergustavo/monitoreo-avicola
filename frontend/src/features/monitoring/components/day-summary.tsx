@@ -1,44 +1,52 @@
 import { Panel, PanelTitle } from '@/components/panel';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatMinutes, formatTemp, formatTime } from '@/lib/format';
-import { computeDayStats } from '../stats';
-import type { DeviceEvent, Reading, ShedSettings } from '../types';
+import type { DaySummaryDto } from '@/lib/types';
 
-interface DaySummaryProps {
-  readings: Reading[];
-  events: DeviceEvent[];
-  settings: ShedSettings;
-}
-
-export function DaySummary({ readings, events, settings }: DaySummaryProps) {
-  const stats = computeDayStats(readings, events, settings, readings.at(-1)?.at);
-
+export function DaySummary({ summary }: { summary: DaySummaryDto | undefined }) {
   return (
     <Panel>
       <PanelTitle>Hoy</PanelTitle>
-      {!stats ? (
+      {!summary ? (
+        <div className="grid grid-cols-2 gap-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
+        </div>
+      ) : summary.readingsCount === 0 ? (
         <p className="text-sm text-muted-foreground">Aún no hay lecturas de hoy.</p>
       ) : (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-5">
-          <Stat label="Mínima" value={`${formatTemp(stats.min.temperature)}°`} detail={formatTime(stats.min.at)} />
-          <Stat label="Máxima" value={`${formatTemp(stats.max.temperature)}°`} detail={formatTime(stats.max.at)} />
-          <Stat label="Promedio" value={`${formatTemp(stats.average)}°`} />
           <Stat
-            label="Riego"
-            value={`${stats.irrigationCycles}`}
-            detail={stats.irrigationMinutes > 0 ? formatMinutes(stats.irrigationMinutes) : undefined}
+            label="Mínima"
+            value={summary.min ? `${formatTemp(summary.min.temperature)}°` : '—'}
+            detail={summary.min ? formatTime(Date.parse(summary.min.at)) : undefined}
           />
-          <div className="col-span-2">
-            <dt className="flex justify-between text-sm text-muted-foreground">
-              <span>Tiempo en rango óptimo</span>
-              <span className="font-medium text-foreground tabular">{Math.round(stats.optimalShare * 100)}%</span>
-            </dt>
-            <dd className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-optimal transition-[width] duration-500"
-                style={{ width: `${stats.optimalShare * 100}%` }}
-              />
-            </dd>
-          </div>
+          <Stat
+            label="Máxima"
+            value={summary.max ? `${formatTemp(summary.max.temperature)}°` : '—'}
+            detail={summary.max ? formatTime(Date.parse(summary.max.at)) : undefined}
+          />
+          <Stat label="Promedio" value={summary.average !== null ? `${formatTemp(summary.average)}°` : '—'} />
+          <Stat
+            label="Riegos"
+            value={`${summary.irrigationCycles}`}
+            detail={summary.irrigationMinutes > 0 ? formatMinutes(summary.irrigationMinutes) : undefined}
+          />
+          {summary.optimalShare !== null && (
+            <div className="col-span-2">
+              <dt className="flex justify-between text-sm text-muted-foreground">
+                <span>Tiempo en rango óptimo</span>
+                <span className="font-medium text-foreground tabular">{Math.round(summary.optimalShare * 100)}%</span>
+              </dt>
+              <dd className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-optimal transition-[width] duration-500"
+                  style={{ width: `${summary.optimalShare * 100}%` }}
+                />
+              </dd>
+            </div>
+          )}
         </dl>
       )}
     </Panel>
