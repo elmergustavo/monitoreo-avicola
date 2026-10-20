@@ -310,4 +310,91 @@ describe('Alerts and notifications (e2e)', () => {
       .send({ offlineAfterMin: 0 })
       .expect(400);
   });
+
+  /** Readings every 30 s from `fromMin` to `toMin` minutes before `now`. */
+  async function readingsBetween(
+    now: Date,
+    fromMin: number,
+    toMin: number,
+    reading: { temperature: number; irrigation: boolean },
+  ) {
+    const data = [];
+    for (let m = fromMin; m >= toMin; m -= 0.5) {
+      data.push({ deviceId, ...reading, createdAt: new Date(now.getTime() - m * 60_000) });
+    }
+    await prisma.reading.createMany({ data });
+  }
+
+  it('detects heat without irrigation from readings and closes it when irrigation starts', async () => {
+    const now = new Date(Date.now() + 30 * 60_000);
+    // 5.5 minutes at 33 °C with irrigation off (alert temperature is 32 °C, rule is 5 min).
+    await readingsBetween(now, 5.5, 0.5, { temperature: 33, irrigation: false });
+    await prisma.device.update({ where: { id: deviceId }, data: { lastSeenAt: now } });
+    await engine.tick(now, [deviceId]);
+
+    const [alert] = await alertsOf('heat_no_irrigation').then((a) =>
+      a.filter((x) => x.status !== 'resolved'),
+    );
+    expect(alert).toMatchObject({ status: 'open', severity: 'critical' });
+    expect(Number(alert.triggerTemperature)).toBe(33);
+
+    await http()
+      .post('/api/readings')
+      .set('x-api-key', apiKey)
+      .send({ temperature: 32.6, irrigation: true })
+      .expect(201);
+    const closed = await eventually(
+      () => prisma.alert.findUniqueOrThrow({ where: { id: alert.id } }),
+      (a) => a.status === 'resolved',
+    );
+    expect(closed.resolution).toBe('Se encendió el riego');
+  });
+
+  it('detects prolonged irrigation from readings and closes it when irrigation stops', async () => {
+    const now = new Date(Date.now() + 90 * 60_000);
+    await readingsBetween(now, 31, 0.5, { temperature: 28, irrigation: true });
+    await prisma.device.update({ where: { id: deviceId }, data: { lastSeenAt: now } });
+    await engine.tick(now, [deviceId]);
+
+    const [alert] = await alertsOf('prolonged_irrigation');
+    expect(alert).toMatchObject({ status: 'open', severity: 'warning' });
+    expect(alert.metadata).toEqual({ durationMin: 30 });
+
+    await http()
+      .post('/api/readings')
+      .set('x-api-key', apiKey)
+      .send({ temperature: 28, irrigation: false })
+      .expect(201);
+    const closed = await eventually(
+      () => prisma.alert.findUniqueOrThrow({ where: { id: alert.id } }),
+      (a) => a.status === 'resolved',
+    );
+    expect(closed.resolution).toBe('Se apagó el riego');
+  });
+
+  it('skips irrigation rules for sheds without an irrigation detector', async () => {
+    const res = await http()
+      .patch(`/api/devices/${deviceId}/alert-rules`)
+      .set(bearer(manager.token))
+      .send({ irrigationSensor: false, heatNoIrrigationMin: 4 })
+      .expect(200);
+    expect(res.body.alertRules).toMatchObject({
+      irrigationSensor: false,
+      heatNoIrrigationMin: 4,
+      prolongedIrrigationMin: 30,
+    });
+
+    const now = new Date(Date.now() + 150 * 60_000);
+    await readingsBetween(now, 5, 0.5, { temperature: 33, irrigation: false });
+    await prisma.device.update({ where: { id: deviceId }, data: { lastSeenAt: now } });
+    await engine.tick(now, [deviceId]);
+    const open = (await alertsOf('heat_no_irrigation')).filter((a) => a.status !== 'resolved');
+    expect(open).toHaveLength(0);
+
+    await http()
+      .patch(`/api/devices/${deviceId}/alert-rules`)
+      .set(bearer(manager.token))
+      .send({ irrigationSensor: true, heatNoIrrigationMin: 5 })
+      .expect(200);
+  });
 });

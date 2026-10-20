@@ -81,6 +81,12 @@ model DeviceSettings {
   reminderEveryMin Int @default(30) @map("reminder_every_min")
   escalateAfterMin Int @default(15) @map("escalate_after_min")
 
+  /// Irrigation rules. Off when the shed has no irrigation detector wired
+  /// (the ESP32 then always reports irrigation: false).
+  irrigationSensor       Boolean @default(true) @map("irrigation_sensor")
+  heatNoIrrigationMin    Int     @default(5) @map("heat_no_irrigation_min")
+  prolongedIrrigationMin Int     @default(30) @map("prolonged_irrigation_min")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)

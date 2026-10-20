@@ -58,6 +58,10 @@ export interface AlertRules {
   sustainedColdMin: number;
   reminderEveryMin: number;
   escalateAfterMin: number;
+  /** The shed has an irrigation detector; without it the irrigation alerts are off. */
+  irrigationSensor: boolean;
+  heatNoIrrigationMin: number;
+  prolongedIrrigationMin: number;
 }
 
 export interface Device {

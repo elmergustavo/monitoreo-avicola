@@ -43,6 +43,9 @@ export function deviceConfig(settings: DeviceSettings | null): {
       sustainedColdMin: settings.sustainedColdMin,
       reminderEveryMin: settings.reminderEveryMin,
       escalateAfterMin: settings.escalateAfterMin,
+      irrigationSensor: settings.irrigationSensor,
+      heatNoIrrigationMin: settings.heatNoIrrigationMin,
+      prolongedIrrigationMin: settings.prolongedIrrigationMin,
     },
   };
 }

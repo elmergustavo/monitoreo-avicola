@@ -31,6 +31,10 @@ export interface AlertRules {
   sustainedColdMin: number;
   reminderEveryMin: number;
   escalateAfterMin: number;
+  /** Whether the shed has an irrigation detector; without one, irrigation rules are skipped. */
+  irrigationSensor: boolean;
+  heatNoIrrigationMin: number;
+  prolongedIrrigationMin: number;
 }
 
 export const DEFAULT_ALERT_RULES: AlertRules = {
@@ -39,6 +43,9 @@ export const DEFAULT_ALERT_RULES: AlertRules = {
   sustainedColdMin: 30,
   reminderEveryMin: 30,
   escalateAfterMin: 15,
+  irrigationSensor: true,
+  heatNoIrrigationMin: 5,
+  prolongedIrrigationMin: 30,
 };
 
 export interface Thresholds {
@@ -55,6 +62,14 @@ export interface WindowStats {
   firstAt: Date | null;
 }
 
+/** A window of readings plus what the irrigation input did in it. */
+export interface IrrigationWindowStats extends WindowStats {
+  /** Irrigation was on in at least one reading. */
+  anyOn: boolean;
+  /** Irrigation was on in every reading. */
+  allOn: boolean;
+}
+
 export interface DeviceSnapshot {
   lastSeenAt: Date | null;
   thresholds: Thresholds;
@@ -65,6 +80,10 @@ export interface DeviceSnapshot {
   coldWindow: WindowStats;
   /** Readings in the last RECOVERY_MIN minutes. */
   recoveryWindow: WindowStats;
+  /** Readings in the last `heatNoIrrigationMin` minutes. */
+  heatNoIrrigationWindow?: IrrigationWindowStats;
+  /** Readings in the last `prolongedIrrigationMin` minutes. */
+  irrigationRunWindow?: IrrigationWindowStats;
   /** Kinds that currently have an unresolved alert. */
   unresolved: AlertKind[];
 }
@@ -129,6 +148,37 @@ export function evaluateDevice(snapshot: DeviceSnapshot, now: Date): Decisions {
     coversWindow(cold, now, rules.sustainedColdMin)
   ) {
     decisions.open.push({ kind: 'sustained_cold', temperature: cold.min ?? cold.max });
+  }
+
+  // Heat without irrigation: hot during the whole window and irrigation never came on.
+  // Detected here from readings, so it works even though the ESP32 only reports on/off.
+  const hot = snapshot.heatNoIrrigationWindow;
+  if (
+    rules.irrigationSensor &&
+    hot &&
+    !isOpen('heat_no_irrigation') &&
+    !hot.anyOn &&
+    hot.min !== null &&
+    hot.min >= thresholds.tempAlert &&
+    coversWindow(hot, now, rules.heatNoIrrigationMin)
+  ) {
+    decisions.open.push({ kind: 'heat_no_irrigation', temperature: hot.max ?? hot.min });
+  }
+
+  // Prolonged irrigation: on in every reading of the window.
+  const run = snapshot.irrigationRunWindow;
+  if (
+    rules.irrigationSensor &&
+    run &&
+    !isOpen('prolonged_irrigation') &&
+    run.allOn &&
+    coversWindow(run, now, rules.prolongedIrrigationMin)
+  ) {
+    decisions.open.push({
+      kind: 'prolonged_irrigation',
+      temperature: run.max ?? undefined,
+      metadata: { durationMin: rules.prolongedIrrigationMin },
+    });
   }
 
   // Recovery, with hysteresis, over the last few minutes of data.

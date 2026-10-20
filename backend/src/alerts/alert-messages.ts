@@ -21,7 +21,12 @@ export interface AlertMessageInput {
   resolution?: string | null;
   acknowledgedByName?: string | null;
   thresholds: { tempMin: number; tempAlert: number };
-  rules: { sustainedHeatMin: number; sustainedColdMin: number; offlineAfterMin: number };
+  rules: {
+    sustainedHeatMin: number;
+    sustainedColdMin: number;
+    offlineAfterMin: number;
+    prolongedIrrigationMin: number;
+  };
 }
 
 const temp = (value: number | null) => (value === null ? '' : `${value.toFixed(1)} °C`);
@@ -37,7 +42,7 @@ function describe(input: AlertMessageInput): string {
     case 'sustained_cold':
       return `Más de ${input.rules.sustainedColdMin} min por debajo de ${input.thresholds.tempMin} °C${t ? ` (bajó a ${t})` : ''}.`;
     case 'prolonged_irrigation':
-      return `El riego lleva encendido más de lo normal ${since}.`;
+      return `El riego lleva más de ${input.rules.prolongedIrrigationMin} min encendido sin apagarse. Revisa la válvula o el control del riego.`;
     case 'sensor_error':
       return `El sensor de temperatura no responde ${since}. Revisa el cable del sensor.`;
     case 'device_offline':

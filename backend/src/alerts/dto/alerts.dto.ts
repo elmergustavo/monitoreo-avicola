@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsISO8601, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsISO8601, IsOptional, IsUUID, Max, Min } from 'class-validator';
 
 export const ALERT_KINDS = [
   'heat_no_irrigation',
@@ -112,4 +112,34 @@ export class UpdateAlertRulesDto {
   @Min(1)
   @Max(1440)
   escalateAfterMin?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'The shed has an irrigation detector. Off skips "heat without irrigation" and "prolonged irrigation"',
+  })
+  @IsOptional()
+  @IsBoolean()
+  irrigationSensor?: boolean;
+
+  @ApiPropertyOptional({
+    example: 5,
+    description:
+      'Minutes at or above the alert temperature with irrigation off before "heat without irrigation"',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  heatNoIrrigationMin?: number;
+
+  @ApiPropertyOptional({
+    example: 30,
+    description: 'Minutes of irrigation running non-stop before "prolonged irrigation"',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(720)
+  prolongedIrrigationMin?: number;
 }

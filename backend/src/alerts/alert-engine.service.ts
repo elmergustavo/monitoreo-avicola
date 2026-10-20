@@ -9,7 +9,14 @@ import {
   type EventMessage,
   type ReadingMessage,
 } from '../telemetry/telemetry-stream.service.js';
-import { dueFollowUps, evaluateDevice, RECOVERY_MIN, type WindowStats } from './alert-rules.js';
+import {
+  dueFollowUps,
+  evaluateDevice,
+  RECOVERY_MIN,
+  type AlertRules,
+  type IrrigationWindowStats,
+  type WindowStats,
+} from './alert-rules.js';
 import { AlertsService, deviceConfig } from './alerts.service.js';
 
 const TICK_MS = 60_000;
@@ -28,6 +35,15 @@ interface WindowRow {
   recent_min: number | null;
   recent_max: number | null;
   recent_first: Date | null;
+  dry_count: number;
+  dry_min: number | null;
+  dry_max: number | null;
+  dry_first: Date | null;
+  dry_any_on: boolean | null;
+  run_count: number;
+  run_max: number | null;
+  run_first: Date | null;
+  run_all_on: boolean | null;
 }
 
 /**
@@ -97,6 +113,8 @@ export class AlertEngineService implements OnModuleInit, OnModuleDestroy {
     await this.alerts.resolve(deviceId, 'sensor_error', 'El sensor volvió a dar lecturas');
     if (reading.irrigation) {
       await this.alerts.resolve(deviceId, 'heat_no_irrigation', 'Se encendió el riego');
+    } else {
+      await this.alerts.resolve(deviceId, 'prolonged_irrigation', 'Se apagó el riego');
     }
     await this.alerts.notePeak(deviceId, reading.temperature);
   }
@@ -129,7 +147,7 @@ export class AlertEngineService implements OnModuleInit, OnModuleDestroy {
     for (const device of devices) {
       const { thresholds, rules } = deviceConfig(device.settings);
       const [windows, unresolved] = await Promise.all([
-        this.windows(device.id, now, rules.sustainedHeatMin, rules.sustainedColdMin),
+        this.windows(device.id, now, rules),
         this.alerts.unresolvedKinds(device.id),
       ]);
       const decisions = evaluateDevice(
@@ -140,6 +158,8 @@ export class AlertEngineService implements OnModuleInit, OnModuleDestroy {
           heatWindow: windows.heat,
           coldWindow: windows.cold,
           recoveryWindow: windows.recent,
+          heatNoIrrigationWindow: windows.dry,
+          irrigationRunWindow: windows.run,
           unresolved,
         },
         now,
@@ -160,12 +180,21 @@ export class AlertEngineService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async windows(deviceId: string, now: Date, heatMin: number, coldMin: number) {
-    const heatStart = new Date(now.getTime() - heatMin * MINUTE);
-    const coldStart = new Date(now.getTime() - coldMin * MINUTE);
-    const recentStart = new Date(now.getTime() - RECOVERY_MIN * MINUTE);
+  private async windows(deviceId: string, now: Date, rules: AlertRules) {
+    const ago = (minutes: number) => new Date(now.getTime() - minutes * MINUTE);
+    const heatStart = ago(rules.sustainedHeatMin);
+    const coldStart = ago(rules.sustainedColdMin);
+    const recentStart = ago(RECOVERY_MIN);
+    const dryStart = ago(rules.heatNoIrrigationMin);
+    const runStart = ago(rules.prolongedIrrigationMin);
     const earliest = new Date(
-      Math.min(heatStart.getTime(), coldStart.getTime(), recentStart.getTime()),
+      Math.min(
+        heatStart.getTime(),
+        coldStart.getTime(),
+        recentStart.getTime(),
+        dryStart.getTime(),
+        runStart.getTime(),
+      ),
     );
 
     const [row] = await this.prisma.$queryRaw<WindowRow[]>`
@@ -181,7 +210,16 @@ export class AlertEngineService implements OnModuleInit, OnModuleDestroy {
         count(*) FILTER (WHERE created_at >= ${recentStart})::int AS recent_count,
         min(temperature) FILTER (WHERE created_at >= ${recentStart})::float8 AS recent_min,
         max(temperature) FILTER (WHERE created_at >= ${recentStart})::float8 AS recent_max,
-        min(created_at) FILTER (WHERE created_at >= ${recentStart}) AS recent_first
+        min(created_at) FILTER (WHERE created_at >= ${recentStart}) AS recent_first,
+        count(*) FILTER (WHERE created_at >= ${dryStart})::int AS dry_count,
+        min(temperature) FILTER (WHERE created_at >= ${dryStart})::float8 AS dry_min,
+        max(temperature) FILTER (WHERE created_at >= ${dryStart})::float8 AS dry_max,
+        min(created_at) FILTER (WHERE created_at >= ${dryStart}) AS dry_first,
+        bool_or(irrigation) FILTER (WHERE created_at >= ${dryStart}) AS dry_any_on,
+        count(*) FILTER (WHERE created_at >= ${runStart})::int AS run_count,
+        max(temperature) FILTER (WHERE created_at >= ${runStart})::float8 AS run_max,
+        min(created_at) FILTER (WHERE created_at >= ${runStart}) AS run_first,
+        bool_and(irrigation) FILTER (WHERE created_at >= ${runStart}) AS run_all_on
       FROM readings
       WHERE device_id = ${deviceId}::uuid AND created_at >= ${earliest} AND created_at <= ${now}`;
 
@@ -200,6 +238,16 @@ export class AlertEngineService implements OnModuleInit, OnModuleDestroy {
       heat: stats(row.heat_count, row.heat_min, row.heat_max, row.heat_first),
       cold: stats(row.cold_count, row.cold_min, row.cold_max, row.cold_first),
       recent: stats(row.recent_count, row.recent_min, row.recent_max, row.recent_first),
+      dry: {
+        ...stats(row.dry_count, row.dry_min, row.dry_max, row.dry_first),
+        anyOn: row.dry_any_on === true,
+        allOn: false,
+      } satisfies IrrigationWindowStats,
+      run: {
+        ...stats(row.run_count, null, row.run_max, row.run_first),
+        anyOn: row.run_all_on === true,
+        allOn: row.run_all_on === true,
+      } satisfies IrrigationWindowStats,
     };
   }
 }

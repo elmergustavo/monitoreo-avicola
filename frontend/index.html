@@ -7,10 +7,10 @@
     <meta name="theme-color" content="#f6f4ee" />
     <title>La Sierra · Monitoreo de galpones</title>
     <script>
-      // Apply the saved (or system) theme before first paint to avoid a flash.
+      // Apply the saved theme before first paint to avoid a flash. Light by default.
       try {
         const saved = localStorage.getItem('theme');
-        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        const dark = saved === 'dark';
         document.documentElement.classList.toggle('dark', dark);
       } catch {}
     </script>

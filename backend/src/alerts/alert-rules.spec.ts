@@ -4,6 +4,7 @@ import {
   evaluateDevice,
   type DeviceSnapshot,
   type FollowUpInput,
+  type IrrigationWindowStats,
   type WindowStats,
 } from './alert-rules.js';
 
@@ -30,6 +31,16 @@ function snapshot(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     ...overrides,
   };
 }
+
+const irrigation = (
+  min: number,
+  max: number,
+  startedMinutesAgo: number,
+  on: { anyOn: boolean; allOn: boolean },
+  count = 10,
+): IrrigationWindowStats => ({ ...window(min, max, startedMinutesAgo, count), ...on });
+const OFF = { anyOn: false, allOn: false };
+const ON = { anyOn: true, allOn: true };
 
 describe('evaluateDevice', () => {
   it('does nothing while everything is in range', () => {
@@ -129,6 +140,66 @@ describe('evaluateDevice', () => {
         { kind: 'sustained_cold', resolution: 'La temperatura volvió sobre el mínimo' },
       ]);
     });
+  });
+});
+
+describe('irrigation rules', () => {
+  const hotDry = irrigation(32.2, 33.1, 5, OFF);
+
+  it('opens "heat without irrigation" when it is hot for the whole window and irrigation never ran', () => {
+    const decisions = evaluateDevice(snapshot({ heatNoIrrigationWindow: hotDry }), NOW);
+    expect(decisions.open).toEqual([{ kind: 'heat_no_irrigation', temperature: 33.1 }]);
+  });
+
+  it('does not open it if irrigation came on at any point of the window', () => {
+    const window = irrigation(32.2, 33.1, 5, { anyOn: true, allOn: false });
+    expect(evaluateDevice(snapshot({ heatNoIrrigationWindow: window }), NOW).open).toEqual([]);
+  });
+
+  it('does not open it if one reading of the window was below the alert temperature', () => {
+    const window = irrigation(31.9, 33.1, 5, OFF);
+    expect(evaluateDevice(snapshot({ heatNoIrrigationWindow: window }), NOW).open).toEqual([]);
+  });
+
+  it('needs the whole window: a short spike is not enough', () => {
+    const window = irrigation(32.2, 33.1, 2, OFF);
+    expect(evaluateDevice(snapshot({ heatNoIrrigationWindow: window }), NOW).open).toEqual([]);
+  });
+
+  it('does not reopen an unresolved alert', () => {
+    const decisions = evaluateDevice(
+      snapshot({ heatNoIrrigationWindow: hotDry, unresolved: ['heat_no_irrigation'] }),
+      NOW,
+    );
+    expect(decisions.open).toEqual([]);
+  });
+
+  it('opens "prolonged irrigation" when irrigation stayed on for the whole window', () => {
+    const decisions = evaluateDevice(
+      snapshot({ irrigationRunWindow: irrigation(27, 28.4, 30, ON, 60) }),
+      NOW,
+    );
+    expect(decisions.open).toEqual([
+      { kind: 'prolonged_irrigation', temperature: 28.4, metadata: { durationMin: 30 } },
+    ]);
+  });
+
+  it('does not open it if irrigation turned off at some point', () => {
+    const window = irrigation(27, 28.4, 30, { anyOn: true, allOn: false }, 60);
+    expect(evaluateDevice(snapshot({ irrigationRunWindow: window }), NOW).open).toEqual([]);
+  });
+
+  it('skips both rules when the shed has no irrigation detector', () => {
+    const rules = { ...DEFAULT_ALERT_RULES, irrigationSensor: false };
+    const decisions = evaluateDevice(
+      snapshot({
+        rules,
+        heatNoIrrigationWindow: hotDry,
+        irrigationRunWindow: irrigation(27, 28.4, 30, ON, 60),
+      }),
+      NOW,
+    );
+    expect(decisions.open).toEqual([]);
   });
 });
 

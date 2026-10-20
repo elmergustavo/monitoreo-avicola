@@ -157,6 +157,9 @@ export class DevicesService {
             sustainedColdMin: device.settings.sustainedColdMin,
             reminderEveryMin: device.settings.reminderEveryMin,
             escalateAfterMin: device.settings.escalateAfterMin,
+            irrigationSensor: device.settings.irrigationSensor,
+            heatNoIrrigationMin: device.settings.heatNoIrrigationMin,
+            prolongedIrrigationMin: device.settings.prolongedIrrigationMin,
           }
         : DEFAULT_ALERT_RULES,
       lastReading: lastReading
