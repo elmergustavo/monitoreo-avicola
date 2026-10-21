@@ -1,4 +1,4 @@
-import { BellRing, Droplets, Eye, EyeOff, GraduationCap, Loader2, Thermometer } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { BrandMark } from '@/components/brand-mark';
@@ -8,22 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
 import { useAuth } from './auth-context';
-
-/** Graduation project this system was built for (shown on the login page). */
-const PROJECT = {
-  title:
-    'Diseño e implementación de un sistema de monitoreo y control automatizado de variables climáticas para la optimización del bienestar animal y la eficiencia productiva en Granjas Avícolas La Sierra',
-  author: 'Cesia Mujo',
-  program: 'Ingeniería en Sistemas · 10.º ciclo',
-  university: 'Universidad Mariano Gálvez de Guatemala',
-  year: 2026,
-};
-
-const FEATURES = [
-  { icon: Thermometer, label: 'Temperatura en vivo' },
-  { icon: Droplets, label: 'Supervisión del riego' },
-  { icon: BellRing, label: 'Alertas al celular' },
-];
 
 export function LoginPage() {
   const { status, login } = useAuth();
@@ -54,45 +38,19 @@ export function LoginPage() {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
       {/* Brand side (desktop) */}
-      <aside className="relative hidden overflow-hidden bg-primary text-primary-foreground lg:flex lg:flex-col lg:justify-between lg:gap-10 lg:p-12">
+      <aside className="relative hidden overflow-hidden bg-primary text-primary-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div className="flex items-center gap-3">
           <BrandMark className="size-9" />
           <span className="font-display text-xl font-semibold tracking-tight">La Sierra</span>
         </div>
-
-        <div className="relative max-w-xl space-y-8">
-          <div>
-            <p className="font-display text-4xl leading-tight font-semibold tracking-tight text-balance">
-              Temperatura y riego de cada galpón, al momento.
-            </p>
-            <p className="mt-4 text-primary-foreground/80">
-              Granjas Avícolas La Sierra · monitoreo en tiempo real desde el campo.
-            </p>
-            <ul className="mt-6 flex flex-wrap gap-2" aria-label="Funciones del sistema">
-              {FEATURES.map(({ icon: Icon, label }) => (
-                <li
-                  key={label}
-                  className="flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-3 py-1.5 text-sm text-primary-foreground/90"
-                >
-                  <Icon className="size-4" aria-hidden="true" />
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <figure className="border-l-2 border-primary-foreground/30 pl-5">
-            <p className="flex items-center gap-2 text-xs font-medium tracking-wider text-primary-foreground/70 uppercase">
-              <GraduationCap className="size-4" aria-hidden="true" />
-              Proyecto de graduación
-            </p>
-            <blockquote className="mt-2 text-sm leading-relaxed text-primary-foreground/90">{PROJECT.title}.</blockquote>
-            <figcaption className="mt-3 text-sm text-primary-foreground/75">
-              <span className="font-medium text-primary-foreground">{PROJECT.author}</span> · {PROJECT.program}
-            </figcaption>
-          </figure>
+        <div className="max-w-md">
+          <p className="font-display text-4xl leading-tight font-semibold tracking-tight">
+            Temperatura y riego de cada galpón, al momento.
+          </p>
+          <p className="mt-4 text-primary-foreground/75">
+            Granjas Avícolas La Sierra · monitoreo en tiempo real desde el campo.
+          </p>
         </div>
-
         <svg
           aria-hidden="true"
           className="pointer-events-none absolute -right-24 -bottom-24 size-[28rem] text-primary-foreground/[0.06]"
@@ -101,9 +59,7 @@ export function LoginPage() {
         >
           <path d="M4 14.5 16 5l12 9.5V27H4V14.5Z" />
         </svg>
-        <p className="relative text-xs text-primary-foreground/70">
-          {PROJECT.university} · {PROJECT.year}
-        </p>
+        <p className="text-xs text-primary-foreground/60">Horas en tiempo de Guatemala</p>
       </aside>
 
       {/* Form side */}
@@ -171,17 +127,6 @@ export function LoginPage() {
             ¿Olvidaste tu contraseña? Pide a un administrador que la restablezca.
           </p>
         </div>
-
-        {/* Project credits on small screens, where the brand side is hidden. */}
-        <footer className="border-t pt-4 text-center text-xs leading-relaxed text-muted-foreground lg:hidden">
-          <p className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-            <GraduationCap className="size-3.5" aria-hidden="true" />
-            Proyecto de graduación · {PROJECT.author}
-          </p>
-          <p>
-            {PROJECT.university} · {PROJECT.year}
-          </p>
-        </footer>
       </main>
     </div>
   );
