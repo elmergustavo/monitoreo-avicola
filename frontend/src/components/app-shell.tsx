@@ -1,7 +1,7 @@
 import { BellRing, ChartSpline, ClipboardList, MessageSquareShare, Cpu, FileText, Gauge, LogOut, ShieldCheck, User, Users, Warehouse, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
-import { BrandMark } from '@/components/brand-mark';
+import { CompanyLogo } from '@/components/company-logo';
 import { LiveIndicator } from '@/components/live-indicator';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -95,9 +95,9 @@ function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="h-14 justify-center border-b px-4">
         <Link to="/" className="flex items-center gap-2.5">
-          <BrandMark className="size-7 text-primary" />
+          <CompanyLogo className="size-9 rounded-md" decorative />
           <span className="leading-tight">
-            <span className="block font-display text-base font-semibold tracking-tight">La Sierra</span>
+            <span className="block font-display text-base font-semibold tracking-tight">Granjas La Sierra</span>
             <span className="block text-[11px] text-muted-foreground">Monitoreo de galpones</span>
           </span>
         </Link>

@@ -1,7 +1,7 @@
 import { KeyRound } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { BrandMark } from '@/components/brand-mark';
+import { CompanyLogo } from '@/components/company-logo';
 import { Button } from '@/components/ui/button';
 import { useAuth } from './auth-context';
 import { PasswordForm } from './password-form';
@@ -14,7 +14,7 @@ export function ChangePasswordPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-5 py-10">
       <div className="w-full max-w-sm">
-        <BrandMark className="size-9 text-primary" />
+        <CompanyLogo className="size-11 rounded-xl" />
         <span className="mt-6 flex size-11 items-center justify-center rounded-xl bg-warm/15 text-warm">
           <KeyRound className="size-5" aria-hidden="true" />
         </span>

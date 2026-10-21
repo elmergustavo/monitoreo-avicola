@@ -1,7 +1,7 @@
 import { BellRing, Droplets, Eye, EyeOff, Loader2, Thermometer } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
-import { BrandMark } from '@/components/brand-mark';
+import { CompanyLogo } from '@/components/company-logo';
 import { FormField } from '@/components/form-field';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
@@ -45,9 +45,12 @@ export function LoginPage() {
     <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
       {/* Brand side (desktop) */}
       <aside className="relative hidden overflow-hidden bg-primary text-primary-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <div className="flex items-center gap-3">
-          <BrandMark className="size-9" />
-          <span className="font-display text-xl font-semibold tracking-tight">La Sierra</span>
+        <div className="flex items-center gap-4">
+          <CompanyLogo className="size-20 rounded-2xl ring-2 ring-primary-foreground/20" />
+          <span className="leading-tight">
+            <span className="block font-display text-2xl font-semibold tracking-tight">Granjas La Sierra</span>
+            <span className="block text-sm text-primary-foreground/75">Monitoreo de galpones</span>
+          </span>
         </div>
         <div className="relative max-w-xl">
           <p className="font-display text-4xl leading-tight font-semibold tracking-tight text-balance">
@@ -83,8 +86,8 @@ export function LoginPage() {
       <main className="flex flex-col px-5 py-6 sm:px-10">
         <div className="flex items-center justify-between lg:justify-end">
           <div className="flex items-center gap-2.5 lg:hidden">
-            <BrandMark className="size-8 text-primary" />
-            <span className="font-display text-lg font-semibold tracking-tight">La Sierra</span>
+            <CompanyLogo className="size-11 rounded-xl" />
+            <span className="font-display text-lg font-semibold tracking-tight">Granjas La Sierra</span>
           </div>
           <ThemeToggle />
         </div>
