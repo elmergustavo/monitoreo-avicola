@@ -29,7 +29,7 @@ export interface AlertMessageInput {
   };
 }
 
-const temp = (value: number | null) => (value === null ? '' : `${value.toFixed(1)} °C`);
+const temp = (value: number | null) => (value === null ? '' : `${value.toFixed(2)} °C`);
 
 function describe(input: AlertMessageInput): string {
   const since = `desde las ${formatTime(input.openedAt)}`;

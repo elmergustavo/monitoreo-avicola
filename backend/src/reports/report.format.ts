@@ -112,7 +112,7 @@ export function formatPeriod(period: ReportData['period']): string {
 }
 
 export function formatTemp(value: number | null): string {
-  return value === null ? '—' : `${value.toFixed(1)} °C`;
+  return value === null ? '—' : `${value.toFixed(2)} °C`;
 }
 
 export function formatPercent(value: number | null, digits = 0): string {

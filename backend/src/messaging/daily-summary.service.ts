@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ReportDataService } from '../reports/report-data.service.js';
 
 const pct = (share: number | null) => (share === null ? null : `${Math.round(share * 100)} %`);
-const temp = (value: number | null) => (value === null ? '—' : `${value.toFixed(1)} °C`);
+const temp = (value: number | null) => (value === null ? '—' : `${value.toFixed(2)} °C`);
 
 function duration(minutes: number): string {
   const total = Math.round(minutes);

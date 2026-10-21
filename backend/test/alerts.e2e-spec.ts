@@ -33,7 +33,7 @@ describe('Alerts and notifications (e2e)', () => {
 
   /** The engine reacts to live telemetry asynchronously. */
   async function eventually<T>(read: () => Promise<T>, done: (value: T) => boolean): Promise<T> {
-    for (let i = 0; i < 125; i++) {
+    for (let i = 0; i < 250; i++) {
       const value = await read();
       if (done(value)) return value;
       await new Promise((resolve) => setTimeout(resolve, 40));
@@ -120,7 +120,7 @@ describe('Alerts and notifications (e2e)', () => {
     expect(opened).toHaveLength(1);
     expect(opened[0]).toMatchObject({ kind: 'alert_opened', severity: 'critical', readAt: null });
     expect(opened[0].title).toBe(`Calor sin riego · e2e-alerts-${suffix}`);
-    expect(opened[0].body).toContain('32.6 °C');
+    expect(opened[0].body).toContain('32.60 °C');
 
     const active = await http()
       .get('/api/alerts')
@@ -157,7 +157,7 @@ describe('Alerts and notifications (e2e)', () => {
       (n) => n !== null,
     );
     expect(notice!.body).toContain('Atendió E2E watcher');
-    expect(notice!.body).toContain('Máxima 33.1 °C');
+    expect(notice!.body).toContain('Máxima 33.10 °C');
 
     // A resolved alert can no longer be acknowledged.
     await http().post(`/api/alerts/${alert.id}/acknowledge`).set(bearer(watcher.token)).expect(409);

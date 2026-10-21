@@ -74,7 +74,7 @@ export class FarmCommandsService {
                 ? '🔵 frío'
                 : '🟢 óptima';
         lines.push(
-          `🌡 ${temperature.toFixed(1)} °C (${state}) · 💧 riego ${reading.irrigation ? 'encendido' : 'apagado'}`,
+          `🌡 ${temperature.toFixed(2)} °C (${state}) · 💧 riego ${reading.irrigation ? 'encendido' : 'apagado'}`,
         );
         lines.push(
           device.online
