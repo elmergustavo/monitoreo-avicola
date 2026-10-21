@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { BellRing, Droplets, Eye, EyeOff, Loader2, Thermometer } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { BrandMark } from '@/components/brand-mark';
@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api';
 import { useAuth } from './auth-context';
+
+const FEATURES = [
+  { icon: Thermometer, label: 'Temperatura en vivo' },
+  { icon: Droplets, label: 'Supervisión del riego' },
+  { icon: BellRing, label: 'Alertas al celular' },
+];
 
 export function LoginPage() {
   const { status, login } = useAuth();
@@ -50,6 +56,17 @@ export function LoginPage() {
           <p className="mt-4 text-lg text-primary-foreground/80 text-pretty">
             Para la optimización del bienestar animal y la eficiencia productiva en Granjas Avícolas La Sierra.
           </p>
+          <ul className="mt-6 flex flex-wrap gap-2" aria-label="Funciones del sistema">
+            {FEATURES.map(({ icon: Icon, label }) => (
+              <li
+                key={label}
+                className="flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-3 py-1.5 text-sm text-primary-foreground/90"
+              >
+                <Icon className="size-4" aria-hidden="true" />
+                {label}
+              </li>
+            ))}
+          </ul>
         </div>
         <svg
           aria-hidden="true"
