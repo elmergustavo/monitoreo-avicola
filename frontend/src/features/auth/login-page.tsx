@@ -43,12 +43,12 @@ export function LoginPage() {
           <BrandMark className="size-9" />
           <span className="font-display text-xl font-semibold tracking-tight">La Sierra</span>
         </div>
-        <div className="max-w-md">
-          <p className="font-display text-4xl leading-tight font-semibold tracking-tight">
-            Temperatura y riego de cada galpón, al momento.
+        <div className="relative max-w-xl">
+          <p className="font-display text-4xl leading-tight font-semibold tracking-tight text-balance">
+            Sistema de monitoreo y control automatizado de variables climáticas
           </p>
-          <p className="mt-4 text-primary-foreground/75">
-            Granjas Avícolas La Sierra · monitoreo en tiempo real desde el campo.
+          <p className="mt-4 text-lg text-primary-foreground/80 text-pretty">
+            Para la optimización del bienestar animal y la eficiencia productiva en Granjas Avícolas La Sierra.
           </p>
         </div>
         <svg
