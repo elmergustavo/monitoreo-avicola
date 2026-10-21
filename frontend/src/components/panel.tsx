@@ -8,7 +8,7 @@ export function Panel({ className, children }: { className?: string; children: R
 
 export function PanelTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
       <h2 className="text-[13px] font-medium tracking-wide text-muted-foreground uppercase">{children}</h2>
       {aside}
     </div>

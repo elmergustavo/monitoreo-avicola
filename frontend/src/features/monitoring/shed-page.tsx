@@ -55,14 +55,14 @@ export function ShedPage() {
       <ActiveAlertsBanner deviceId={device.id} />
 
       {readings.isPending ? (
-        <div className="grid gap-4 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <Skeleton className="h-64 rounded-xl lg:col-span-5" />
           <Skeleton className="h-64 rounded-xl lg:col-span-4" />
           <Skeleton className="h-64 rounded-xl lg:col-span-3" />
           <Skeleton className="h-96 rounded-xl lg:col-span-12" />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <TemperaturePanel readings={data} settings={device.settings} />
           </div>

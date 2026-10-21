@@ -29,9 +29,15 @@ const numberFormat = new Intl.NumberFormat('es-GT', {
   maximumFractionDigits: 1,
 });
 
+/** Temperatures keep the sensor's two decimals (the DS18B20 resolves 0.0625 °C). */
+const tempFormat = new Intl.NumberFormat('es-GT', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export const formatTime = (at: number): string => timeFormat.format(at);
 export const formatShortDay = (at: number): string => shortDayFormat.format(at);
-export const formatTemp = (value: number): string => numberFormat.format(value);
+export const formatTemp = (value: number): string => tempFormat.format(value);
 export const formatMinutes = (value: number): string =>
   value >= 60 ? `${Math.floor(value / 60)} h ${Math.round(value % 60)} min` : `${numberFormat.format(value)} min`;
 

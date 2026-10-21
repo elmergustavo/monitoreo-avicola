@@ -57,7 +57,7 @@ function Stat({ label, value, detail }: { label: string; value: string; detail?:
   return (
     <div>
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 flex items-baseline gap-2">
+      <dd className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
         <span className="font-display text-2xl font-semibold tracking-tight tabular">{value}</span>
         {detail && <span className="font-mono text-xs text-muted-foreground tabular">{detail}</span>}
       </dd>

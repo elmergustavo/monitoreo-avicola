@@ -23,9 +23,9 @@ export function TemperaturePanel({ readings, settings }: { readings: Reading[]; 
         Temperatura actual
       </PanelTitle>
 
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <p className={cn('font-display leading-none font-semibold tracking-tight tabular', THERMAL_TEXT[state])}>
-          <span className="text-7xl sm:text-8xl">{formatTemp(last.temperature)}</span>
+          <span className="text-5xl min-[400px]:text-6xl sm:text-8xl lg:text-7xl 2xl:text-8xl">{formatTemp(last.temperature)}</span>
           <span className="ml-1 align-top text-3xl font-medium sm:text-4xl">°C</span>
         </p>
         <div
