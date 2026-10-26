@@ -31,10 +31,28 @@ Por defecto se usa **GPIO 27** como entrada con pull-up interno: cuando el pin s
 
 Puedes cambiar el pin y la lógica en `config.h` (`IRRIGATION_PIN`, `IRRIGATION_ACTIVE_LEVEL`). Si todavía no hay detector de riego, pon `IRRIGATION_SENSOR_ENABLED false` y se enviará siempre `irrigation: false`.
 
+### Pantalla LCD 12864 (opcional)
+
+Pantalla gráfica de 128×64 con chip **ST7920**, en **modo serial** (solo 3 cables de datos). Muestra la temperatura, el riego, la señal Wi-Fi y si el servidor aceptó la última lectura.
+
+| Pantalla | ESP32 |
+|---|---|
+| GND, PSB, BLK | GND |
+| VCC, BLA | VIN (5 V) |
+| E | GPIO 18 |
+| R/W | GPIO 23 |
+| RS | GPIO 19 |
+| V0, DB0–DB7, NC, VOUT | sin conectar |
+
+- **PSB a GND es obligatorio**: activa el modo serial.
+- **RST** puede quedar libre (la placa lo trae conectado por dentro); si la pantalla no arranca, conéctalo a 5 V.
+- Si prende la luz pero no se ven letras, gira el potenciómetro **VR1** de atrás (contraste).
+- Sin pantalla, pon `DISPLAY_ENABLED false` en `config.h`.
+
 ## 2. Preparar el Arduino IDE
 
 1. **Soporte para ESP32:** *Herramientas → Placa → Gestor de tarjetas* → busca **esp32** (de Espressif Systems) → *Instalar*.
-2. **Librerías:** *Herramientas → Administrar bibliotecas* → instala **OneWire** y **DallasTemperature**.
+2. **Librerías:** *Herramientas → Administrar bibliotecas* → instala **OneWire**, **DallasTemperature** y **U8g2** (de oliver, para la pantalla).
 3. **Placa:** *Herramientas → Placa → esp32 → ESP32 Dev Module* (o el modelo que tengas) y el puerto USB correspondiente.
 
 ## 3. Configurar

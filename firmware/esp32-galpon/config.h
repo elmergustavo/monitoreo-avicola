@@ -28,3 +28,11 @@
 
 // Consecutive failed sensor reads before reporting a sensor_error event.
 #define SENSOR_ERROR_THRESHOLD 3
+
+// LCD 12864 screen (ST7920) in serial mode. PSB goes to GND.
+// Wiring: E -> GPIO 18, R/W -> GPIO 23, RS -> GPIO 19, VCC/BLA -> 5 V (VIN), GND/BLK -> GND.
+// Set to false if the shed has no screen.
+#define DISPLAY_ENABLED true
+#define DISPLAY_E_PIN 18
+#define DISPLAY_RW_PIN 23
+#define DISPLAY_RS_PIN 19

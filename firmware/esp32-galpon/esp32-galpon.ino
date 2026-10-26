@@ -6,6 +6,9 @@
 //   POST {API_URL}/readings  every 30 s   { "temperature": 29.50, "irrigation": false }
 //   POST {API_URL}/events    on changes   { "type": "irrigation_off", "temperature": 28.10, "durationMin": 8.5 }
 //
+// An optional LCD 12864 shows the temperature, irrigation, Wi-Fi and whether
+// the server accepted the last reading.
+//
 // The device only monitors; it never controls the irrigation system.
 // Timestamps are set by the server.
 // ---------------------------------------------------------------------------
@@ -13,6 +16,7 @@
 #include <DallasTemperature.h>
 #include <HTTPClient.h>
 #include <OneWire.h>
+#include <U8g2lib.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
@@ -21,10 +25,30 @@
 #include "root_ca.h"
 #include "secrets.h"
 
+// Defaults for config.h files written before the screen existed.
+#ifndef DISPLAY_ENABLED
+#define DISPLAY_ENABLED true
+#endif
+#ifndef DISPLAY_E_PIN
+#define DISPLAY_E_PIN 18
+#endif
+#ifndef DISPLAY_RW_PIN
+#define DISPLAY_RW_PIN 23
+#endif
+#ifndef DISPLAY_RS_PIN
+#define DISPLAY_RS_PIN 19
+#endif
+#define DISPLAY_REFRESH_MS 1000UL
+
 // ----- Hardware -------------------------------------------------------------
 
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature sensors(&oneWire);
+
+#if DISPLAY_ENABLED
+// ST7920 in serial mode: clock = E, data = R/W, chip select = RS.
+U8G2_ST7920_128X64_F_SW_SPI lcd(U8G2_R0, DISPLAY_E_PIN, DISPLAY_RW_PIN, DISPLAY_RS_PIN, U8X8_PIN_NONE);
+#endif
 
 // ----- Network --------------------------------------------------------------
 
@@ -46,6 +70,10 @@ unsigned long irrigationStartedAt = 0;
 unsigned long lastReadingAt = 0;
 unsigned long lastWifiAttemptAt = 0;
 unsigned long lastEventAttemptAt = 0;
+
+int lastSendStatus = 0;  // HTTP status of the last reading: 0 = none yet, < 0 = no answer
+unsigned long lastSendAt = 0;
+unsigned long lastDisplayAt = 0;
 
 // ----- Event queue (events are retried until the API accepts them) ----------
 
@@ -199,7 +227,8 @@ void sendReading(float temperature) {
   body += irrigationOn ? "true" : "false";
   body += "}";
   // Readings are periodic: if one fails it is simply replaced by the next.
-  postJson("/readings", body);
+  lastSendStatus = postJson("/readings", body);
+  lastSendAt = millis();
 }
 
 void flushEvents() {
@@ -279,12 +308,94 @@ void updateIrrigation() {
   }
 }
 
+// ----- Screen ---------------------------------------------------------------
+
+#if DISPLAY_ENABLED
+// Two short lines, used while starting up (each line fits ~21 characters).
+void showMessage(const char *line1, const char *line2) {
+  lcd.clearBuffer();
+  lcd.setFont(u8g2_font_6x10_tf);
+  lcd.drawUTF8(0, 10, "Granjas La Sierra");
+  lcd.drawHLine(0, 13, 128);
+  lcd.drawUTF8(0, 34, line1);
+  lcd.drawUTF8(0, 48, line2);
+  lcd.sendBuffer();
+}
+
+// Signal strength as 4 bars in the top-right corner (only dots when offline).
+void drawWifiBars(int x, int baseline) {
+  int bars = 0;
+  if (WiFi.status() == WL_CONNECTED) {
+    long rssi = WiFi.RSSI();
+    bars = rssi > -60 ? 4 : rssi > -70 ? 3 : rssi > -80 ? 2 : 1;
+  }
+  for (int i = 0; i < 4; i++) {
+    int height = 3 + i * 2;
+    if (i < bars) lcd.drawBox(x + i * 3, baseline - height, 2, height);
+    else lcd.drawPixel(x + i * 3, baseline - 1);
+  }
+}
+
+String agoText(unsigned long since) {
+  unsigned long seconds = (millis() - since) / 1000;
+  return seconds < 120 ? String(seconds) + "s" : String(seconds / 60) + " min";
+}
+
+String serverText() {
+  if (WiFi.status() != WL_CONNECTED) return "WiFi: reconectando";
+  if (lastSendStatus == 0) return "Enviando primer dato";
+  if (lastSendStatus == 201) return "Servidor OK hace " + agoText(lastSendAt);
+  if (lastSendStatus == 401) return "Error 401: API key";
+  if (lastSendStatus < 0) return "Servidor no responde";
+  return "Error servidor " + String(lastSendStatus);
+}
+
+String irrigationText() {
+#if IRRIGATION_SENSOR_ENABLED
+  if (!irrigationOn) return "Riego: apagado";
+  return "Riego: ENCENDIDO " + String((millis() - irrigationStartedAt) / 60000) + "m";
+#else
+  return "Riego: sin detector";
+#endif
+}
+
+void updateDisplay() {
+  lastDisplayAt = millis();
+  lcd.clearBuffer();
+
+  lcd.setFont(u8g2_font_6x10_tf);
+  lcd.drawUTF8(0, 10, "Granjas La Sierra");
+  drawWifiBars(116, 11);
+  lcd.drawHLine(0, 13, 128);
+
+  bool hasTemperature = !isnan(lastTemperature) && !sensorErrorReported;
+  lcd.setFont(u8g2_font_logisoso24_tf);
+  String value = hasTemperature ? String(lastTemperature, 2) : String("--.--");
+  lcd.drawStr(0, 42, value.c_str());
+  int unitX = lcd.getStrWidth(value.c_str()) + 4;
+  lcd.setFont(u8g2_font_6x12_tf);
+  lcd.drawUTF8(unitX, 26, "°C");
+
+  lcd.setFont(u8g2_font_6x10_tf);
+  lcd.drawUTF8(0, 53, hasTemperature ? irrigationText().c_str() : "Sensor: sin lectura");
+  lcd.drawUTF8(0, 63, serverText().c_str());
+  lcd.sendBuffer();
+}
+#else
+void showMessage(const char *, const char *) {}
+void updateDisplay() {}
+#endif
+
 // ----- Arduino entry points -------------------------------------------------
 
 void setup() {
   Serial.begin(115200);
   delay(500);
   Serial.println("\nMonitoreo Avícola - ESP32");
+#if DISPLAY_ENABLED
+  lcd.begin();
+#endif
+  showMessage("Iniciando...", "");
 
   sensors.begin();
   sensors.setResolution(12);
@@ -300,12 +411,14 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  showMessage("Conectando WiFi:", WIFI_SSID);
   ensureWifi();
   unsigned long startedAt = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startedAt < 20000) delay(250);
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.printf("[wifi] connected, IP %s\n", WiFi.localIP().toString().c_str());
+    showMessage("WiFi conectado", "Sincronizando hora...");
     if (useTls) syncClock();
   } else {
     Serial.println("[wifi] not connected yet, will keep retrying");
@@ -314,6 +427,7 @@ void setup() {
   // First reading right away instead of waiting 30 s.
   takeReading();
   lastReadingAt = millis();
+  updateDisplay();
 }
 
 void loop() {
@@ -331,7 +445,10 @@ void loop() {
   if (millis() - lastReadingAt >= READING_INTERVAL_MS) {
     lastReadingAt = millis();
     takeReading();
+    updateDisplay();
   }
+
+  if (millis() - lastDisplayAt >= DISPLAY_REFRESH_MS) updateDisplay();
 
   flushEvents();
   delay(50);
