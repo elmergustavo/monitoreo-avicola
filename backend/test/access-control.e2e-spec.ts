@@ -6,6 +6,7 @@ import { configureApp } from '../src/app.setup.js';
 import { hashPassword } from '../src/auth/password.util.js';
 import { SYSTEM_ROLES } from '../src/auth/permissions.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { UsersService } from '../src/users/users.service.js';
 
 /**
  * End-to-end tests for login, sessions, users, roles and permissions.
@@ -292,6 +293,45 @@ describe('Access control (e2e)', () => {
         .expect(201);
       const { token } = await login(email('forgetful'), response.body.temporaryPassword);
       await http().get('/api/devices').set(bearer(token)).expect(403);
+    });
+  });
+
+  describe('deleting users (CLI)', () => {
+    it('deletes the user and their data, keeps the audit trail and signs them out', async () => {
+      const users = app.get(UsersService);
+      const target = await createUser('deleted', 'viewer');
+      const { token } = await login(email('deleted'));
+      await prisma.notificationPreferences.create({ data: { userId: target.id } });
+      const audited = await prisma.auditLog.create({
+        data: { userId: target.id, action: 'e2e.before_delete', entityType: 'user' },
+      });
+
+      const deleted = await users.remove(target.id, null);
+      expect(deleted).toMatchObject({ email: email('deleted'), role: 'Observador' });
+
+      expect(await prisma.user.findUnique({ where: { id: target.id } })).toBeNull();
+      expect(await prisma.session.count({ where: { userId: target.id } })).toBe(0);
+      expect(await prisma.notificationPreferences.count({ where: { userId: target.id } })).toBe(0);
+      // Past actions stay in the log, just without the person.
+      expect(await prisma.auditLog.findUnique({ where: { id: audited.id } })).toMatchObject({
+        userId: null,
+      });
+      const record = await prisma.auditLog.findFirstOrThrow({
+        where: { action: 'user.deleted', entityId: target.id },
+      });
+      expect(record.metadata).toMatchObject({ email: email('deleted'), role: 'viewer' });
+
+      await http().get('/api/devices').set(bearer(token)).expect(401);
+      await prisma.auditLog.deleteMany({ where: { id: { in: [audited.id, record.id] } } });
+    });
+
+    it('refuses unknown users and deleting yourself', async () => {
+      const users = app.get(UsersService);
+      const target = await createUser('self', 'viewer');
+      await expect(users.remove(target.id, target.id)).rejects.toThrow('propia cuenta');
+      await expect(users.remove('00000000-0000-7000-8000-000000000000', null)).rejects.toThrow(
+        'no encontrado',
+      );
     });
   });
 

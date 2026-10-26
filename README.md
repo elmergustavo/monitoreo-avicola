@@ -126,10 +126,15 @@ Desde `backend/` (local) o desde la terminal del contenedor en Dokploy (`cd /app
 npm run cli -- create-user --email ana@granja.com --name "Ana" --role viewer   # local (compila a .cli-build/)
 npm run cli:prod -- create-user --email ana@granja.com --name "Ana" --role viewer  # contenedor
 npm run cli:prod -- reset-password --email ana@granja.com
+npm run cli:prod -- list-users
+npm run cli:prod -- delete-user --email ana@granja.com          # solo muestra a quién borraría
+npm run cli:prod -- delete-user --email ana@granja.com --yes    # lo borra (no se puede deshacer)
 npm run cli:prod -- list-devices
 npm run cli:prod -- create-device --name "Galpón 2" --shed "Galpón 2"   # imprime la API key del ESP32
 npm run cli:prod -- rotate-device-key --device <id>                      # la key anterior deja de funcionar
 ```
+
+`delete-user` borra al usuario con sus sesiones, bandeja, vínculos de Telegram/WhatsApp y preferencias. La bitácora y las alertas que atendió se conservan, sin su nombre, y queda registrado `user.deleted`. No deja borrar al último administrador activo. Si solo quieres quitarle el acceso, desactívalo desde **Administración → Usuarios**.
 
 ### Endpoints del dashboard
 

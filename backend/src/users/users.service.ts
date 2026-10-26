@@ -145,6 +145,29 @@ export class UsersService {
     return { temporaryPassword };
   }
 
+  /**
+   * Deletes a user for good. Their sessions, inbox, Telegram/WhatsApp links and
+   * preferences go with them; the audit log and the alerts they attended keep
+   * the record without the person (the foreign keys set it to null).
+   */
+  async remove(id: string, actorId: string | null, ip?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id }, include: { role: true } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    if (id === actorId) throw new BadRequestException('No puedes eliminar tu propia cuenta');
+    if (user.role.key === ADMIN_ROLE_KEY && user.active) await this.ensureAnotherActiveAdmin(id);
+
+    await this.prisma.user.delete({ where: { id } });
+    await this.audit.record({
+      userId: actorId,
+      action: 'user.deleted',
+      entityType: 'user',
+      entityId: id,
+      metadata: { email: user.email, name: user.name, role: user.role.key },
+      ip,
+    });
+    return { email: user.email, name: user.name, role: user.role.name };
+  }
+
   private async ensureRoleExists(roleId: string) {
     const role = await this.prisma.role.findUnique({ where: { id: roleId } });
     if (!role) throw new BadRequestException('El rol no existe');
